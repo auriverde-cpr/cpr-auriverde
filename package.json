@@ -1,0 +1,12 @@
+{
+  "name": "gerador-cpr-precos",
+  "private": true,
+  "type": "module",
+  "description": "Rotina de atualizacao do preco de referencia EPAGRI/Cepa para o gerador de CPR.",
+  "scripts": {
+    "atualizar-precos": "node scripts/atualizar-precos.mjs"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
