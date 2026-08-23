@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de CPR — Cooperativa Regional Auriverde</title>
+<style>
+  :root{
+    --ink:#1c2a24; --paper:#ffffff; --field-bg:#f4f7f4; --line:#d3ddd6;
+    --grain:#e8efe9; --grao:#c6a15b; --grao-d:#a8823d; --folha:#2f6b47; --folha-d:#245338;
+    --muted:#6a7b71;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif;background:var(--grain);color:var(--ink);line-height:1.5}
+  .topbar{background:var(--folha);color:#eef5ef;padding:16px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.12);position:sticky;top:0;z-index:50}
+  .topbar .brand{font-weight:700;font-size:1.1rem}
+  .topbar .brand small{display:block;font-weight:400;font-size:.7rem;opacity:.85}
+  .topbar .spacer{flex:1}
+  .appver{font-size:.66rem;font-weight:600;color:#eef5ef;opacity:.6;letter-spacing:.3px;align-self:center;white-space:nowrap}
+  .btn{border:none;border-radius:8px;padding:10px 18px;font-size:.9rem;font-weight:600;cursor:pointer;transition:transform .05s,box-shadow .15s,background .15s}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--grao);color:#2a2412;box-shadow:0 2px 6px rgba(168,130,61,.4)}
+  .btn-primary:hover{background:var(--grao-d);color:#fff}
+  .btn-ghost{background:rgba(255,255,255,.14);color:#eef5ef}
+  .btn-ghost:hover{background:rgba(255,255,255,.24)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+
+  .config-wrap{max-width:760px;margin:0 auto;padding:40px 24px 60px}
+  .config-card{background:var(--paper);border-radius:18px;box-shadow:0 4px 20px rgba(0,0,0,.08);overflow:hidden}
+  .config-head{background:linear-gradient(135deg,var(--folha),var(--folha-d));color:#eef5ef;padding:28px 32px}
+  .config-head h1{margin:0 0 4px;font-size:1.5rem}
+  .config-head p{margin:0;opacity:.9;font-size:.9rem}
+  .config-body{padding:14px 32px 28px}
+  .qrow{padding:18px 0;border-top:1px solid var(--line)}
+  .qrow:first-child{border-top:none}
+  .qrow .q{font-weight:600;margin-bottom:10px;font-size:.98rem;display:flex;align-items:center;gap:8px}
+  .qrow .q .n{background:var(--folha);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;flex:0 0 auto}
+  .opts{display:flex;gap:10px;flex-wrap:wrap}
+  .opt{flex:1;min-width:120px;position:relative}
+  .opt input{position:absolute;opacity:0;pointer-events:none}
+  .opt label{display:block;text-align:center;padding:12px 14px;border:2px solid var(--line);border-radius:10px;cursor:pointer;font-weight:600;font-size:.92rem;color:var(--muted);background:var(--field-bg);transition:all .15s;user-select:none}
+  .opt label small{font-weight:400;opacity:.8}
+  .opt label:hover{border-color:var(--grao)}
+  .opt input:checked + label{border-color:var(--folha);background:var(--folha);color:#fff;box-shadow:0 2px 8px rgba(47,107,71,.3)}
+  .opt input:focus-visible + label{outline:3px solid rgba(198,161,91,.5);outline-offset:2px}
+  .conditional{margin-top:14px;padding-left:16px;border-left:3px solid var(--grao)}
+  .hidden{display:none !important}
+  .config-actions{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 32px;background:var(--grain);border-top:1px solid var(--line);flex-wrap:wrap}
+  .summary-chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{background:#fff;border:1px solid var(--line);border-radius:20px;padding:4px 12px;font-size:.78rem;color:var(--ink);font-weight:600}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media(max-width:920px){.wrap{grid-template-columns:1fr}}
+  .panel{background:var(--paper);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden}
+  .panel h2{margin:0;padding:14px 20px;font-size:.92rem;letter-spacing:.4px;text-transform:uppercase;background:var(--folha);color:#eef5ef;font-weight:600}
+  .panel .pbody{padding:8px 20px 20px;max-height:calc(100vh - 180px);overflow:auto}
+  @media(max-width:920px){.panel .pbody{max-height:none}}
+  .config-banner{background:#fff;border-bottom:1px solid var(--line);padding:12px 20px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .config-banner .lbl{font-size:.78rem;color:var(--muted);font-weight:600;margin-right:4px}
+  fieldset{border:none;margin:0;padding:14px 0 4px;border-top:1px solid var(--line)}
+  fieldset:first-of-type{border-top:none}
+  legend{font-weight:700;color:var(--folha);font-size:.8rem;letter-spacing:.5px;text-transform:uppercase}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  @media(max-width:520px){.grid2,.grid3{grid-template-columns:1fr}}
+  .fld{display:flex;flex-direction:column;gap:3px;margin:6px 0}
+  .fld.full{grid-column:1/-1}
+  label.flab{font-size:.76rem;color:var(--muted);font-weight:600}
+  .hint{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--folha);color:#fff;font-size:.68rem;font-weight:700;cursor:help;margin-left:5px;position:relative;user-select:none;vertical-align:middle;text-decoration:none}
+  a.hint{cursor:pointer;background:var(--grao);color:#2a2412}
+  a.hint:hover{background:var(--grao-d);color:#fff}
+  .hint:focus{outline:none}
+  .hint::after{content:attr(data-tip);position:absolute;bottom:135%;left:50%;transform:translateX(-50%);background:#1c2a24;color:#fff;font-weight:400;font-size:.72rem;line-height:1.35;white-space:normal;width:210px;padding:8px 10px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.28);opacity:0;visibility:hidden;transition:opacity .12s;z-index:60;pointer-events:none}
+  .hint:hover::after,.hint:focus::after{opacity:1;visibility:visible}
+  input.f{font-family:inherit;font-size:.9rem;color:var(--ink);background:var(--field-bg);border:1px solid var(--line);border-radius:7px;padding:9px 11px;width:100%;transition:border-color .15s,box-shadow .15s}
+  input.f:focus{outline:none;border-color:var(--grao);box-shadow:0 0 0 3px rgba(198,161,91,.18)}
+  input.f,select.f{text-transform:uppercase}                 /* padrão: digitação em MAIÚSCULA */
+  input.f.lc,select.f.lc{text-transform:none}                /* exceções em minúscula: profissão e regime */
+  input.f::placeholder{text-transform:none}                  /* mantém as dicas (placeholder) em minúscula */
+  input.f.calc{background:#eef2ef;color:var(--muted)}
+  .f.erro{border-color:#c0392b !important;box-shadow:0 0 0 3px rgba(192,57,43,.15) !important}   /* campo obrigatório em branco */
+
+  .preview-scroll{max-height:calc(100vh - 180px);overflow:auto;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line)}
+  @media(max-width:920px){.preview-scroll{max-height:none}}
+  /* documento: SEMPRE preto */
+  #doc{background:#fff;color:#000;font-family:"Times New Roman",Georgia,serif;font-size:11pt;line-height:1.45;padding:34px 38px}
+  #doc h1{text-align:center;font-size:12.5pt;margin:0 0 10px}
+  #doc h2.qr{text-align:center;font-size:11.5pt;margin:0 0 12px;font-weight:bold;color:#000}
+  #doc table.qr{width:100%;border-collapse:collapse;margin-bottom:12px}
+  #doc table.qr td{border:1px solid #000;padding:4px 7px;vertical-align:top;font-size:9pt}
+  #doc table.qr td.lab{background:#ededed;font-weight:bold;width:34%}
+  #doc .cl-h{font-weight:bold;text-decoration:underline;margin:12px 0 6px;font-size:10.5pt}
+  #doc p.cl{text-align:justify;margin:0 0 7px}
+  /* campos preenchidos e vazios: mesma cor preta; vazios só ganham sublinhado pontilhado para orientar na tela */
+  #doc .fillv{font-weight:bold;text-transform:uppercase}   /* padrão: valores preenchidos em MAIÚSCULA */
+  #doc .fillv.lc{text-transform:none}                      /* exceções em minúscula: regime, profissão, datas e valores por extenso */
+  #doc .emptyv{border-bottom:1px dotted #999;color:#000}
+  #doc .sig-line{margin-top:72px}                         /* espaço amplo para assinar acima da linha */
+  #doc .sig-line b{text-transform:uppercase}              /* nomes das assinaturas em MAIÚSCULA */
+  #doc .sig-role{display:block;font-size:8pt;letter-spacing:.5px;margin-bottom:1px}  /* papel (emitente/anuente/credora) acima do nome */
+  #doc .sig-rule{border-top:1px solid #000;padding-top:8px}
+  #doc .sig-flex{display:flex;justify-content:space-between;gap:34px}
+  #doc .pg-break{break-before:page;page-break-before:always}   /* corpo da CPR começa em nova página */
+  #doc .sig-flex > div{flex:1;text-align:center}
+  #doc .demo-note{background:#fff7e6;border:1px dashed var(--grao-d);border-radius:8px;padding:10px 12px;font-family:"Segoe UI",sans-serif;font-size:.82rem;color:#6a5a2e;margin-bottom:14px}
+
+  @media print{
+    .topbar,.form-col,.config-banner,.no-print{display:none !important}
+    .wrap{display:block;max-width:none;margin:0;padding:0;gap:0}
+    /* Achata os containers para o navegador imprimir TEXTO vetorial (não rasterizar em imagem) */
+    .panel{box-shadow:none !important;border-radius:0 !important;overflow:visible !important;background:#fff !important}
+    .preview-scroll{max-height:none;overflow:visible;box-shadow:none;border-radius:0 !important}
+    #doc{padding:0;font-size:10.5pt}
+    #doc .demo-note{display:none}
+    #doc .emptyv{border-bottom:none}     /* no PDF, sem sublinhado pontilhado */
+    @page{size:A4;margin:16mm 15mm}        /* sem header/footer */
+    body{background:#fff}
+    #doc table.qr td,#doc table.qr td.lab{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+  .footnote{font-size:.75rem;color:var(--muted);text-align:center;padding:14px}
+  /* Bloco de dados embutido no PDF: invisível (branco, 1px), mas presente no texto do PDF para reimportação */
+  #doc #cprPayload{color:#fff;background:transparent;font-size:5px;line-height:8px;word-break:break-all;user-select:none;font-family:monospace}
+</style>
+</head>
+<body>
+
+<div class="topbar no-print">
+  <div class="brand">Gerador de CPR<small>Cooperativa Regional Auriverde</small></div>
+  <span class="appver" id="appver"></span>
+  <div class="spacer"></div>
+  <button id="btnBack" class="btn btn-ghost hidden" onclick="voltarConfig()">← Alterar configuração</button>
+  <button id="btnLoad" class="btn btn-ghost" onclick="importarDados()" title="Reabrir um PDF gerado por este app para continuar a edição">📂 Carregar PDF</button>
+  <button id="btnPdf" class="btn btn-primary hidden" onclick="gerarPDF()">Gerar PDF</button>
+  <input type="file" id="fileInput" accept=".json,application/json,.pdf,application/pdf" style="display:none">
+</div>
+
+<!-- STEP 1 -->
+<div id="config" class="config-wrap no-print">
+  <div class="config-card">
+    <div class="config-head">
+      <h1>Nova Cédula de Produto Rural</h1>
+      <p>Escolha as características da operação.</p>
+    </div>
+    <div class="config-body">
+      <div class="qrow"><div class="q"><span class="n">1</span> Tipo de CPR</div>
+        <div class="opts">
+          <div class="opt"><input type="radio" name="tipo" id="tipo_f" value="fisica"><label for="tipo_f">Física <small>(entrega do produto)</small></label></div>
+          <div class="opt"><input type="radio" name="tipo" id="tipo_n" value="financeira"><label for="tipo_n">Financeira <small>(liquidação em dinheiro)</small></label></div>
+        </div></div>
+      <div class="qrow"><div class="q"><span class="n">2</span> Cultura / Produto</div>
+        <div class="opts">
+          <div class="opt"><input type="radio" name="cultura" id="cul_s" value="soja"><label for="cul_s">Soja</label></div>
+          <div class="opt"><input type="radio" name="cultura" id="cul_m" value="milho"><label for="cul_m">Milho</label></div>
+          <div class="opt"><input type="radio" name="cultura" id="cul_t" value="trigo"><label for="cul_t">Trigo</label></div>
+        </div>
+        <div id="safraExtra" class="conditional hidden">
+          <div class="q" style="margin-top:6px"><span class="n">2a</span> Tipo de safra (soja)</div>
+          <div class="opts">
+            <div class="opt"><input type="radio" name="safra_tipo" id="sf_s" value="safra"><label for="sf_s">Safra</label></div>
+            <div class="opt"><input type="radio" name="safra_tipo" id="sf_f" value="safrinha"><label for="sf_f">Safrinha</label></div>
+          </div>
+        </div></div>
+      <div class="qrow"><div class="q"><span class="n">3</span> Estado civil do emitente principal</div>
+        <div class="opts">
+          <div class="opt"><input type="radio" name="ecivil" id="ec_s" value="solteiro"><label for="ec_s">Solteiro(a)</label></div>
+          <div class="opt"><input type="radio" name="ecivil" id="ec_c" value="casado"><label for="ec_c">Casado(a)</label></div>
+        </div></div>
+      <div class="qrow"><div class="q"><span class="n">4</span> Gênero do emitente principal</div>
+        <div class="opts">
+          <div class="opt"><input type="radio" name="sexo" id="sx_h" value="h"><label for="sx_h">Masculino</label></div>
+          <div class="opt"><input type="radio" name="sexo" id="sx_m" value="m"><label for="sx_m">Feminino</label></div>
+        </div></div>
+      <div class="qrow"><div class="q"><span class="n">5</span> Possui anuente? <small style="font-weight:400;color:var(--muted)">(arrendador/proprietário do imóvel)</small></div>
+        <div class="opts">
+          <div class="opt"><input type="radio" name="anuente" id="an_n" value="nao"><label for="an_n">Não</label></div>
+          <div class="opt"><input type="radio" name="anuente" id="an_s" value="sim"><label for="an_s">Sim</label></div>
+        </div>
+        <div id="anuenteExtra" class="conditional hidden">
+          <div class="q" style="margin-top:6px"><span class="n">5a</span> Estado civil do anuente</div>
+          <div class="opts">
+            <div class="opt"><input type="radio" name="an_ecivil" id="anec_s" value="solteiro"><label for="anec_s">Solteiro(a)</label></div>
+            <div class="opt"><input type="radio" name="an_ecivil" id="anec_c" value="casado"><label for="anec_c">Casado(a)</label></div>
+          </div>
+          <div class="q" style="margin-top:14px"><span class="n">5b</span> Gênero do anuente principal</div>
+          <div class="opts">
+            <div class="opt"><input type="radio" name="an_sexo" id="ansx_h" value="h"><label for="ansx_h">Masculino</label></div>
+            <div class="opt"><input type="radio" name="an_sexo" id="ansx_m" value="m"><label for="ansx_m">Feminino</label></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="config-actions">
+      <div class="summary-chips" id="chips"></div>
+      <button id="btnStart" class="btn btn-primary" disabled onclick="iniciar()">Continuar →</button>
+    </div>
+  </div>
+  <p class="footnote">Nada é salvo: tudo é processado no seu navegador e descartado ao fechar a página.</p>
+</div>
+
+<!-- STEP 2 -->
+<div id="editor" class="hidden">
+  <div class="wrap">
+    <div class="panel form-col">
+      <h2>Dados da operação</h2>
+      <div class="config-banner" id="banner"></div>
+      <div class="pbody" id="formFields"></div>
+    </div>
+    <div class="panel">
+      <h2 class="no-print">Pré-visualização</h2>
+      <div class="preview-scroll"><div id="doc"></div></div>
+    </div>
+  </div>
+  <div class="footnote no-print">Ao gerar, em <b>Destino/Impressora</b> escolha <b>“Salvar como PDF”</b> do navegador — <b>não</b> use impressoras de PDF (Foxit, Adobe etc.), que salvam como imagem e impedem a reedição. Desmarque também <b>“Cabeçalhos e rodapés”</b>.</div>
+</div>
+
+<!-- Biblioteca de leitura de PDF (offline). Permite reimportar os dados a partir do PDF gerado. -->
+<script src="lib/pdf.min.js"></script>
+<script>
+/* ===================== CONFIG STATE ===================== */
+if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
+
+/* VERSÃO DO APP — bumpe a cada publicação para saber o que está no ar */
+const APP_VERSION='1.1';
+const APP_DATA='22/08/2026';
+document.getElementById('appver').textContent='v'+APP_VERSION+' · '+APP_DATA;
+const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
+const LABELS={
+  tipo:{fisica:"Física",financeira:"Financeira"},cultura:{soja:"Soja",milho:"Milho",trigo:"Trigo"},
+  safra_tipo:{safra:"Safra",safrinha:"Safrinha"},
+  ecivil:{solteiro:"Solteiro(a)",casado:"Casado(a)"},sexo:{h:"Masculino",m:"Feminino"},
+  anuente:{sim:"Com anuente",nao:"Sem anuente"},
+  an_ecivil:{solteiro:"Anuente solteiro(a)",casado:"Anuente casado(a)"},an_sexo:{h:"Anuente masculino",m:"Anuente feminino"}
+};
+
+/* =================================================================
+   PREÇO DE REFERÊNCIA — EPAGRI/Cepa (praça EXTREMO OESTE, "Val. Mais Comum")
+   Fonte: https://cepa.epagri.sc.gov.br/index.php/mercado-agricola/
+          → PREÇOS DIÁRIOS → Historico_precos_diario.xlsx
+
+   Atualização automática: uma rotina (GitHub Action) baixa o xlsx da EPAGRI,
+   extrai os preços de Extremo Oeste e grava 'precos.json' ao lado deste arquivo.
+   A página lê esse JSON (mesma origem, sem CORS). Se o JSON não existir/carregar
+   — por exemplo ao abrir por duplo clique (file://) — usa o snapshot abaixo como
+   fallback, então o app NUNCA quebra. Os valores abaixo são o último snapshot bom.
+   ================================================================= */
+let PRECOS_EPAGRI={
+  soja: {valor:"130,00", data:"19/08/2026"},
+  milho:{valor:"60,00",  data:"19/08/2026"},
+  trigo:{valor:"73,00",  data:"19/08/2026"}
+};
+(function carregarPrecos(){
+  fetch('precos.json',{cache:'no-store'})
+    .then(r=>r.ok?r.json():Promise.reject())
+    .then(d=>{
+      if(!d||!d.soja||!d.milho) return;
+      const antigo=PRECOS_EPAGRI; PRECOS_EPAGRI={...PRECOS_EPAGRI, ...d};  // mescla: preserva culturas ausentes no JSON (ex.: trigo)
+      // Se o formulário já está aberto e o preço ainda não foi alterado à mão, atualiza.
+      const pc=document.getElementById('preco_saca');
+      if(pc && cfg.cultura && antigo[cfg.cultura]){
+        const da=document.getElementById('data_apuracao');
+        if(pc.value===antigo[cfg.cultura].valor){ pc.value=d[cfg.cultura].valor; calc(); }
+        if(da && da.value===antigo[cfg.cultura].data){ da.value=d[cfg.cultura].data; }
+      }
+    })
+    .catch(()=>{});
+})();
+document.querySelectorAll('input[type=radio]').forEach(r=>{
+  r.addEventListener('change',()=>{
+    cfg[r.name]=r.value;
+    if(r.name==='anuente'){
+      const ex=document.getElementById('anuenteExtra');
+      if(r.value==='sim') ex.classList.remove('hidden');
+      else{ex.classList.add('hidden');cfg.an_ecivil=null;cfg.an_sexo=null;
+        document.querySelectorAll('input[name=an_ecivil],input[name=an_sexo]').forEach(x=>x.checked=false);}
+    }
+    if(r.name==='cultura'){
+      const sf=document.getElementById('safraExtra');
+      if(r.value==='soja') sf.classList.remove('hidden');
+      else{sf.classList.add('hidden');cfg.safra_tipo=null;
+        document.querySelectorAll('input[name=safra_tipo]').forEach(x=>x.checked=false);}
+      // preço de referência acompanha a cultura: descarta o salvo p/ reaplicar a referência atual
+      delete formData.preco_saca; delete formData.data_apuracao;
+    }
+    chips();validate();
+  });
+});
+function chips(){const c=document.getElementById('chips');c.innerHTML='';
+  ['tipo','cultura','safra_tipo','ecivil','sexo','anuente','an_ecivil','an_sexo'].forEach(k=>{
+    if(cfg[k]){const s=document.createElement('span');s.className='chip';s.textContent=LABELS[k][cfg[k]];c.appendChild(s);}});}
+function validate(){let ok=cfg.tipo&&cfg.cultura&&cfg.ecivil&&cfg.sexo&&cfg.anuente;
+  if(cfg.cultura==='soja')ok=ok&&cfg.safra_tipo;
+  if(cfg.anuente==='sim')ok=ok&&cfg.an_ecivil&&cfg.an_sexo;
+  document.getElementById('btnStart').disabled=!ok;}
+
+/* ===================== MOTOR DE FLEXÃO ===================== */
+// Constrói o dicionário de tokens conforme a configuração das partes.
+function flex(sexo,ecivil,kind){ // kind: 'E' (emitente) ou 'A' (anuente)
+  const casal=(ecivil==='casado'), fem=(sexo==='m');
+  const TITU = kind==='E' ? 'EMITENTE' : 'ANUENTE';
+  if(casal){
+    return {
+      T:TITU, TS:TITU+'S', plural:true, fem:false,
+      art:'os', artU:'Os', de:'dos',
+      nac:'brasileiros', portador:'portadores', inscrito:'inscritos',
+      domic:'residentes e domiciliados', promete:'prometem', obriga:'obrigam-se',
+      constitui:'constituem', declara:'declaram', possui:'possuem', assume:'assumem',
+      recebe:'receberam', ciente:'cientes', esta:'estão', qualif:'qualificados'
+    };
+  }
+  if(fem){
+    return {
+      T:TITU, TS:TITU, plural:false, fem:true,
+      art:'a', artU:'A', de:'da',
+      nac:'brasileira', portador:'portadora', inscrito:'inscrita',
+      domic:'residente e domiciliada', promete:'promete', obriga:'obriga-se',
+      constitui:'constitui', declara:'declara', possui:'possui', assume:'assume',
+      recebe:'recebeu', ciente:'ciente', esta:'está', qualif:'qualificada'
+    };
+  }
+  return {
+    T:TITU, TS:TITU, plural:false, fem:false,
+    art:'o', artU:'O', de:'do',
+    nac:'brasileiro', portador:'portador', inscrito:'inscrito',
+    domic:'residente e domiciliado', promete:'promete', obriga:'obriga-se',
+    constitui:'constitui', declara:'declara', possui:'possui', assume:'assume',
+    recebe:'recebeu', ciente:'ciente', esta:'está', qualif:'qualificado'
+  };
+}
+
+/* Especificações de qualidade conforme a cultura */
+function specsQualidade(){
+  if(cfg.cultura==='milho'){
+    return 'milho, a granel, com no máximo 14% de umidade, 1% de impurezas (peneira 3 mm), 5% de grãos quebrados (peneira 5 mm) e, na soma entre grãos ardidos, brotados, fermentados, queimados e/ou gessados, o máximo de 6%, exigindo-se ainda a ausência de insetos vivos';
+  }
+  if(cfg.cultura==='trigo'){
+    return 'trigo, a granel, com no máximo 14% de umidade, peso do hectolitro (PH) mínimo de 78, no máximo 1,5% de triguilho e no máximo 1% de impurezas';
+  }
+  return 'soja industrial, a granel, com até 14% de umidade, no máximo 1% de matéria estranha e impurezas, no máximo 8% de grãos avariados, no máximo 4% de grãos ardidos, no máximo 6% de grãos mofados, no máximo 1% de grãos queimados e esverdeados e no máximo 8% de grãos partidos, quebrados e amassados';
+}
+
+/* ===================== CAMPOS DINÂMICOS ===================== */
+function buildFields(){
+  const E=flex(cfg.sexo,cfg.ecivil,'E');
+  const _hoje=new Date();
+  const _pad=n=>String(n).padStart(2,'0');
+  const hojeISO=`${_hoje.getFullYear()}-${_pad(_hoje.getMonth()+1)}-${_pad(_hoje.getDate())}`;
+  let h='';
+  h+=`<fieldset><legend>Identificação</legend>
+    <div class="grid3">
+      <div class="fld"><label class="flab">Filial</label><input class="f" id="filial" placeholder="ex.: 10"></div>
+      <div class="fld"><label class="flab">Número da cédula</label><input class="f" id="num" placeholder="ex.: 11"></div>
+      <div class="fld"><label class="flab">Data de emissão</label><input class="f" type="date" id="data_emissao" value="${hojeISO}"></div></div></fieldset>`;
+
+  h+=`<fieldset><legend>${E.plural?'1º Emitente':'Emitente'}</legend>
+    <div class="fld full"><label class="flab">Nome completo</label><input class="f" id="nome1" placeholder="nome"></div>
+    <div class="grid2">
+      ${cfg.ecivil==='casado'?`<div class="fld"><label class="flab">Regime de bens</label>
+        <select class="f" id="regime" onchange="toggleRegimeOutro()">
+          <option value="">selecione o regime...</option>
+          <option>comunhão parcial de bens</option>
+          <option>comunhão universal de bens</option>
+          <option>separação total de bens</option>
+          <option value="outro">outro (especificar)</option>
+        </select>
+        <input class="f" id="regime_outro" placeholder="especifique o regime" style="display:none;margin-top:6px"></div>`:''}
+      <div class="fld"><label class="flab">Profissão</label><input class="f" id="prof1" value="agropecuarista" placeholder="ex.: agropecuarista"></div>
+      <div class="fld"><label class="flab">RG</label><input class="f" id="rg1" placeholder="RG"></div>
+      <div class="fld"><label class="flab">CPF</label><input class="f" id="cpf1" inputmode="numeric" placeholder="000.000.000-00"></div>
+      <div class="fld"><label class="flab">Inscrição estadual</label><input class="f" id="ie1" placeholder="IE produtor rural"></div>
+    </div></fieldset>`;
+
+  if(cfg.ecivil==='casado'){
+    h+=`<fieldset><legend>2º Emitente (cônjuge)</legend>
+      <div class="fld full"><label class="flab">Nome completo</label><input class="f" id="nome2" placeholder="nome do cônjuge"></div>
+      <div class="grid3"><div class="fld"><label class="flab">Profissão</label><input class="f" id="prof2" value="agropecuarista" placeholder="ex.: agropecuarista"></div>
+      <div class="fld"><label class="flab">RG</label><input class="f" id="rg2" placeholder="RG"></div>
+      <div class="fld"><label class="flab">CPF</label><input class="f" id="cpf2" inputmode="numeric" placeholder="000.000.000-00"></div></div></fieldset>`;
+  }
+
+  h+=`<fieldset><legend>Endereço e contato</legend>
+    <div class="fld full"><label class="flab">Endereço (linha/localidade)</label><input class="f" id="endereco" placeholder="ex.: Linha São José, interior"></div>
+    <div class="grid2"><div class="fld"><label class="flab">Município/UF</label><input class="f" id="municipio_res" placeholder="Município/UF"></div>
+    <div class="fld"><label class="flab">Telefone (DDD + número)</label><input class="f" id="telefone" inputmode="numeric" placeholder="(49) 99999-9999"></div></div></fieldset>`;
+
+  // Representante da Credora (dados pessoais)
+  h+=`<fieldset><legend>Representante da Credora</legend>
+    <div class="grid2"><div class="fld"><label class="flab">Nome do gerente</label><input class="f" id="gerente" placeholder="nome"></div>
+    <div class="fld"><label class="flab">CPF</label><input class="f" id="cpfger" inputmode="numeric" placeholder="000.000.000-00"></div></div></fieldset>`;
+
+  // Endereço do Representante da Credora (bloco próprio)
+  h+=`<fieldset><legend>Endereço do Representante da Credora</legend>
+    <div class="grid2"><div class="fld"><label class="flab">Rua</label><input class="f" id="end_rua" placeholder="rua"></div>
+    <div class="fld"><label class="flab">Número</label><input class="f" id="end_num" placeholder="nº"></div></div>
+    <div class="grid2"><div class="fld"><label class="flab">Bairro</label><input class="f" id="end_bairro" placeholder="bairro"></div>
+    <div class="fld"><label class="flab">Município/UF</label><input class="f" id="end_municipio" placeholder="Município/UF"></div></div></fieldset>`;
+
+  // Anuente
+  if(cfg.anuente==='sim'){
+    const A=flex(cfg.an_sexo,cfg.an_ecivil,'A');
+    h+=`<fieldset><legend>${A.plural?'1º Anuente (proprietário/arrendador)':'Anuente (proprietário/arrendador)'}</legend>
+      <div class="fld full"><label class="flab">Nome completo</label><input class="f" id="an_nome1" placeholder="nome do anuente"></div>
+      <div class="grid3"><div class="fld"><label class="flab">RG</label><input class="f" id="an_rg1" placeholder="RG"></div>
+      <div class="fld"><label class="flab">CPF</label><input class="f" id="an_cpf1" inputmode="numeric" placeholder="000.000.000-00"></div>
+      <div class="fld"><label class="flab">Profissão</label><input class="f" id="an_prof1" value="agropecuarista" placeholder="ex.: agropecuarista"></div></div>`;
+    if(cfg.an_ecivil==='casado'){
+      h+=`<div class="fld full" style="margin-top:8px"><label class="flab">Nome do cônjuge do anuente</label><input class="f" id="an_nome2" placeholder="nome do cônjuge"></div>
+        <div class="grid3"><div class="fld"><label class="flab">RG</label><input class="f" id="an_rg2" placeholder="RG"></div>
+        <div class="fld"><label class="flab">CPF</label><input class="f" id="an_cpf2" inputmode="numeric" placeholder="000.000.000-00"></div>
+        <div class="fld"><label class="flab">Profissão</label><input class="f" id="an_prof2" value="agropecuarista" placeholder="ex.: agropecuarista"></div></div>`;
+    }
+    h+=`<div class="fld full" style="margin-top:8px"><label class="flab">Endereço (linha/localidade)</label><input class="f" id="an_endereco" placeholder="ex.: Linha São José, interior"></div>
+      <div class="grid2"><div class="fld"><label class="flab">Município/UF</label><input class="f" id="an_municipio_res" placeholder="Município/UF"></div>
+      <div class="fld"><label class="flab">Data do contrato de arrendamento</label><input class="f" type="date" id="an_data_arr"></div></div></fieldset>`;
+  }
+
+  // Produto e imóvel
+  h+=`<fieldset><legend>Produto e imóvel</legend>
+    <div class="grid2"><div class="fld"><label class="flab">Quantidade (sacas 60 kg)</label><input class="f" id="qtde_sacas" placeholder="ex.: 500" oninput="calc()"></div>
+    <div class="fld"><label class="flab">Equivalente em kg</label><input class="f calc" id="qtde_kg" readonly placeholder="calculado"></div></div>
+    <div class="fld full"><label class="flab">Safra</label><input class="f" id="safra" value="2026/2027"></div>
+    <div class="grid2"><div class="fld"><label class="flab">Matrícula do imóvel</label><input class="f" id="matricula" placeholder="nº"></div>
+    <div class="fld"><label class="flab">Comarca do Registro de Imóveis (RI)</label><input class="f" id="comarca_ri" placeholder="Comarca"></div>
+    <div class="fld"><label class="flab">Município/UF do imóvel</label><input class="f" id="mun_imovel" placeholder="Município/UF"></div>
+    <div class="fld"><label class="flab">CAR do Imóvel</label><input class="f" id="car" placeholder="nº do CAR"></div>
+    <div class="fld"><label class="flab">CCIR/Incra</label><input class="f" id="ccir" placeholder="nº do CCIR"></div>
+    <div class="fld"><label class="flab">Área total (ha)<span class="hint" tabindex="0" data-tip="Área total do imóvel descrito.">?</span></label><input class="f" id="area_total" placeholder="ha"></div>
+    <div class="fld"><label class="flab">Área cultivada (ha)<span class="hint" tabindex="0" data-tip="Área cultivada no imóvel descrito do produto referência da CPR.">?</span></label><input class="f" id="area_cult" placeholder="ha"></div></div></fieldset>`;
+
+  const fisica = cfg.tipo==='fisica';
+
+  // Entrega — só na CPR Física (obrigação de entrega do produto)
+  if(fisica){
+    h+=`<fieldset><legend>Entrega</legend>
+      <div class="grid2"><div class="fld"><label class="flab">Local de entrega (unidade)</label>
+        <select class="f" id="local_entrega">
+          <option value="">selecione a unidade...</option>
+          <option>Cunha Porã/SC</option>
+          <option>Maravilha/SC</option>
+          <option>Iraceminha/SC</option>
+          <option>São Carlos/SC</option>
+          <option>Orleans/SC</option>
+          <option>Giruá/RS</option>
+        </select></div>
+      <div class="fld"><label class="flab">Prazo de entrega<span class="hint" tabindex="0" data-tip="Pré-definido pela cultura/safra a partir da data de emissão. Pode ajustar se necessário.">?</span></label><input class="f" id="prazo_entrega" placeholder="ex.: 31/03/2027"></div></div></fieldset>`;
+  }
+
+  // Precificação e valores (rótulos conforme o tipo)
+  const _ref=PRECOS_EPAGRI[cfg.cultura]||{valor:'',data:''};
+  h+=`<fieldset><legend>Precificação e valores</legend>
+    <div class="grid2"><div class="fld"><label class="flab">Preço de referência (R$/saca)<a class="hint" href="https://cepa.epagri.sc.gov.br/index.php/mercado-agricola/" target="_blank" rel="noopener" data-tip="Preço pré-preenchido pela referência EPAGRI/Cepa — praça Extremo Oeste (valor mais comum da saca de 60 kg). Confira e ajuste se houver divulgação mais recente. Clique para abrir a página de preços (PREÇOS DIÁRIOS) em nova guia.">?</a></label><input class="f" id="preco_saca" value="${_ref.valor}" placeholder="ex.: 130,00" oninput="calc()"></div>
+    <div class="fld"><label class="flab">Data de apuração</label><input class="f" id="data_apuracao" value="${_ref.data}" placeholder="ex.: 15/08/2026"></div></div>
+    <div class="grid2"><div class="fld"><label class="flab">${fisica?'Valor referencial / antecipação (R$)':'Valor líquido a desembolsar (R$)'}</label><input class="f calc" id="valor" readonly placeholder="calculado"></div>
+    ${fisica?'':`<div class="fld"><label class="flab">Data de vencimento<span class="hint" tabindex="0" data-tip="Data de Vencimento da Campanha / Prazo de Venda.">?</span></label><input class="f" type="date" id="vencimento"></div>`}
+    </div>
+  </fieldset>`;
+
+  document.getElementById('formFields').innerHTML=h;
+  // Acessibilidade: associa cada rótulo ao seu campo (label for = id do input/select)
+  document.querySelectorAll('#formFields .fld').forEach(fld=>{
+    const lab=fld.querySelector('label.flab'), ctl=fld.querySelector('input,select');
+    if(lab&&ctl&&ctl.id&&!lab.htmlFor) lab.htmlFor=ctl.id;
+  });
+  // Campos que ficam em minúscula (profissão e regime)
+  ['prof1','prof2','an_prof1','an_prof2','regime','qtde_kg'].forEach(id=>{const el=document.getElementById(id); if(el) el.classList.add('lc');});
+  // Máscaras (rodam antes do render para o documento já receber o valor formatado)
+  ['cpf1','cpf2','cpfger','an_cpf1','an_cpf2'].forEach(id=>{const el=document.getElementById(id);
+    if(el) el.addEventListener('input',()=>{el.value=maskCPF(el.value);});});
+  const _tel=document.getElementById('telefone');
+  if(_tel) _tel.addEventListener('input',()=>{_tel.value=maskTel(_tel.value);});
+  // Prazo de entrega recalcula ao mudar a data de emissão, enquanto não for editado à mão.
+  const _pz=document.getElementById('prazo_entrega'), _de=document.getElementById('data_emissao');
+  if(_pz){ _pz.value=prazoEntregaPadrao(); _pz.dataset.auto=_pz.value;   // pré-preenche com o campo de data já no DOM
+    if(_de) _de.addEventListener('change',()=>{
+      if(_pz.value===_pz.dataset.auto){ const novo=prazoEntregaPadrao(); _pz.value=novo; _pz.dataset.auto=novo; saveFormData(); render(); }
+    });
+  }
+  document.querySelectorAll('#formFields .f').forEach(e=>{
+    e.addEventListener('input',()=>{e.classList.remove('erro');saveFormData();render();});
+    e.addEventListener('change',()=>{e.classList.remove('erro');saveFormData();render();});
+  });
+  restoreFormData();   // repõe o que já havia sido digitado (ao voltar e reeditar a configuração)
+}
+
+/* Armazenamento temporário (em memória): mantém os dados digitados ao voltar para
+   a configuração e retornar. É descartado ao atualizar ou fechar a página. */
+let formData={};
+function saveFormData(){
+  document.querySelectorAll('#formFields .f').forEach(el=>{ if(el.id) formData[el.id]=el.value; });
+}
+function restoreFormData(){
+  document.querySelectorAll('#formFields .f').forEach(el=>{
+    if(el.id && el.id!=='regime_outro' && (el.id in formData)) el.value=formData[el.id];
+  });
+  // Regime "outro": mostra o campo de texto se necessário e repõe o valor digitado.
+  if(document.getElementById('regime')){
+    toggleRegimeOutro();
+    const ro=document.getElementById('regime_outro');
+    if(ro && ('regime_outro' in formData)) ro.value=formData['regime_outro'];
+  }
+}
+
+/* ===================== HELPERS ===================== */
+const gv=id=>(document.getElementById(id)?.value||'').trim();
+function fv(id,guia){const v=gv(id);return v?`<span class="fillv">${esc(v)}</span>`:`<span class="emptyv">[${guia}]</span>`;}
+/* fv em minúscula (profissão etc.) */
+function fvLc(id,guia){const v=gv(id);return v?`<span class="fillv lc">${esc(v)}</span>`:`<span class="emptyv">[${guia}]</span>`;}
+function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+/* Regime de bens: se "outro" estiver selecionado, vale o que foi digitado */
+function toggleRegimeOutro(){
+  const s=document.getElementById('regime'), i=document.getElementById('regime_outro');
+  if(!s||!i) return;
+  i.style.display = s.value==='outro' ? 'block' : 'none';
+  if(s.value!=='outro') i.value='';
+  render();
+}
+function fvRegime(){
+  const s=gv('regime'); const v = s==='outro' ? gv('regime_outro') : s;
+  return v ? `<span class="fillv lc">${esc(v)}</span>` : `<span class="emptyv">[regime de bens]</span>`;
+}
+
+/* Máscaras: digita só números e o campo se formata sozinho */
+function maskCPF(v){
+  v=v.replace(/\D/g,'').slice(0,11);
+  if(v.length>9) return `${v.slice(0,3)}.${v.slice(3,6)}.${v.slice(6,9)}-${v.slice(9)}`;
+  if(v.length>6) return `${v.slice(0,3)}.${v.slice(3,6)}.${v.slice(6)}`;
+  if(v.length>3) return `${v.slice(0,3)}.${v.slice(3)}`;
+  return v;
+}
+function maskTel(v){
+  v=v.replace(/\D/g,'').slice(0,11);
+  if(v.length<=2) return v.length?`(${v}`:'';
+  if(v.length<=6) return `(${v.slice(0,2)}) ${v.slice(2)}`;
+  if(v.length<=10) return `(${v.slice(0,2)}) ${v.slice(2,6)}-${v.slice(6)}`;   // fixo: (DD) NNNN-NNNN
+  return `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;                     // celular: (DD) NNNNN-NNNN
+}
+
+/* Ano da cédula — sempre derivado da data de emissão */
+function anoTxt(){const dt=emissaoDate();return dt?`<span class="fillv">${dt.getFullYear()}</span>`:`<span class="emptyv">[ano]</span>`;}
+/* Numeração da CPR no formato Número/Ano/Filial (ex.: 11/2026/10) */
+function numCPR(){return `${fv('num','nº')}/${anoTxt()}/${fv('filial','filial')}`;}
+
+/* Datas: emissão (campo date) e pagamento automático = emissão + 30 dias */
+const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function emissaoDate(){const v=gv('data_emissao');if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return null;const[y,m,d]=v.split('-').map(Number);return new Date(y,m-1,d);}
+function emissaoSpan(){const dt=emissaoDate();return dt?`<span class="fillv lc">${dt.getDate()} de ${MESES[dt.getMonth()]}</span>`:`<span class="emptyv">[dia de mês]</span>`;}
+function pagamentoSpan(){const dt=emissaoDate();if(!dt)return `<span class="emptyv">[emissão + 30 dias]</span>`;const p=new Date(dt);p.setDate(p.getDate()+30);return `<span class="fillv lc">${p.getDate()} de ${MESES[p.getMonth()]} de ${p.getFullYear()}</span>`;}
+/* Formata um campo de data (aaaa-mm-dd) como "dd de mês de aaaa"; senão, guia. */
+function dataExtensoField(id,guia){const v=gv(id);const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v);if(!m)return `<span class="emptyv">[${guia}]</span>`;return `<span class="fillv lc">${+m[3]} de ${MESES[+m[2]-1]} de ${+m[1]}</span>`;}
+/* Cláusula opcional "datado de <data>" do arrendamento — só aparece se a data for informada. */
+function dataArrClausula(){ return gv('an_data_arr') ? ` datado de ${dataExtensoField('an_data_arr','data do arrendamento')}` : ''; }
+/* Formata um campo de data (aaaa-mm-dd) como "dd/mm/aaaa"; senão, guia. */
+function dataBRField(id,guia){const v=gv(id);const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v);if(!m)return `<span class="emptyv">[${guia}]</span>`;return `<span class="fillv">${m[3]}/${m[2]}/${m[1]}</span>`;}
+
+/* Prazo de entrega padrão conforme a cultura/safra, a partir do ANO da emissão.
+   Milho e Soja Safra: 28/02 do ano seguinte | Soja Safrinha: 30/04 do ano seguinte
+   Trigo: 30/11 do mesmo ano da emissão. Retorna dd/mm/aaaa (ou '' se sem data). */
+function prazoEntregaPadrao(){
+  const dt=emissaoDate(); if(!dt) return '';
+  const y=dt.getFullYear();
+  if(cfg.cultura==='trigo') return `30/11/${y}`;
+  if(cfg.cultura==='milho') return `28/02/${y+1}`;
+  if(cfg.cultura==='soja')  return cfg.safra_tipo==='safrinha' ? `30/04/${y+1}` : `28/02/${y+1}`;
+  return '';
+}
+
+/* Valor por extenso (reais) — preenchido automaticamente */
+function numeroExtenso(n){
+  n=Math.floor(n); if(n===0) return 'zero';
+  const u=['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+  const dez=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  const cem=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+  function ate999(x){
+    if(x===0) return ''; if(x===100) return 'cem';
+    let s=''; const c=Math.floor(x/100), r=x%100;
+    if(c>0) s+=cem[c];
+    if(r>0){ if(s) s+=' e '; if(r<20) s+=u[r]; else { s+=dez[Math.floor(r/10)]; if(r%10>0) s+=' e '+u[r%10]; } }
+    return s;
+  }
+  const parts=[]; let resto=n;
+  const escalas=[['bilhão','bilhões',1000000000],['milhão','milhões',1000000],['mil','mil',1000]];
+  for(const[sing,plur,div] of escalas){ const q=Math.floor(resto/div); resto%=div;
+    if(q>0){ if(div===1000) parts.push({v:q,t:q===1?'mil':ate999(q)+' mil'}); else parts.push({v:q,t:ate999(q)+' '+(q===1?sing:plur)}); } }
+  if(resto>0) parts.push({v:resto,t:ate999(resto)});
+  let out='';
+  for(let i=0;i<parts.length;i++){ if(i===0){out=parts[i].t;continue;}
+    const last=i===parts.length-1, v=parts[i].v;
+    out+=((last&&(v<100||v%100===0))?' e ':', ')+parts[i].t; }
+  return out;
+}
+function extensoReais(v){
+  if(v==null||isNaN(v)) return '';
+  const cents=Math.round(v*100); const inteiro=Math.floor(cents/100), c=cents%100;
+  let s=''; if(inteiro>0) s=numeroExtenso(inteiro)+' '+(inteiro===1?'real':'reais');
+  if(c>0){ const cent=numeroExtenso(c)+' '+(c===1?'centavo':'centavos'); s=inteiro>0?s+' e '+cent:cent; }
+  if(inteiro===0&&c===0) s='zero reais';
+  return s;
+}
+/* Valor total (número) e seu extenso — usados no cálculo e no texto das cédulas. */
+/* número positivo a partir de campo pt-BR; retorna NaN se inválido, negativo ou zero */
+function numPos(id){
+  const n=parseFloat(gv(id).replace(/\./g,'').replace(',','.'));
+  return (!isNaN(n) && n>0) ? n : NaN;
+}
+function valorNumerico(){
+  const s=numPos('qtde_sacas'), p=numPos('preco_saca');
+  return (!isNaN(s)&&!isNaN(p)) ? s*p : NaN;
+}
+function valorExtensoAtual(){ const t=valorNumerico(); return (isNaN(t)||t>=1e12)?'':extensoReais(t); }
+function calc(){
+  const s=numPos('qtde_sacas');
+  document.getElementById('qtde_kg').value=isNaN(s)?'':(s*60).toLocaleString('pt-BR')+' kg';
+  const total=valorNumerico();
+  document.getElementById('valor').value=isNaN(total)?'':total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  render();
+}
+
+/* Destaca em negrito os termos jurídicos (EMITENTE(S), ANUENTE(S), CREDOR(A/ES))
+   e o nome da CREDORA no documento. Aplicado ao HTML final de cada render. */
+function destacarTermos(html){
+  html=html.replace(/COOPERATIVA REGIONAL AURIVERDE/g,'<b>COOPERATIVA REGIONAL AURIVERDE</b>');
+  html=html.replace(/\b(EMITENTES?|ANUENTES?|CREDOR(?:A|AS|ES)?)\b/g,'<b>$1</b>');
+  return html;
+}
+
+/* Assinaturas: papel (menor) acima do nome, e CPF abaixo. */
+function sigNomeCPF(papel,nome,cpf){
+  return `<span class="sig-role">${papel}</span><b>${nome?esc(nome):'____________'}</b><br>CPF: ${cpf?esc(cpf):'____________'}`;
+}
+function blocoAssinaturas(){
+  let s='';
+  if(cfg.ecivil==='casado'){
+    s+=`<div class="sig-line sig-flex"><div><div class="sig-rule"></div>${sigNomeCPF('EMITENTE',gv('nome1'),gv('cpf1'))}</div><div><div class="sig-rule"></div>${sigNomeCPF('EMITENTE',gv('nome2'),gv('cpf2'))}</div></div>`;
+  } else {
+    s+=`<div class="sig-line" style="text-align:center"><div class="sig-rule" style="width:60%;margin:0 auto"></div>${sigNomeCPF('EMITENTE',gv('nome1'),gv('cpf1'))}</div>`;
+  }
+  if(cfg.anuente==='sim'){
+    if(cfg.an_ecivil==='casado'){
+      s+=`<div class="sig-line sig-flex"><div><div class="sig-rule"></div>${sigNomeCPF('ANUENTE',gv('an_nome1'),gv('an_cpf1'))}</div><div><div class="sig-rule"></div>${sigNomeCPF('ANUENTE',gv('an_nome2'),gv('an_cpf2'))}</div></div>`;
+    } else {
+      s+=`<div class="sig-line" style="text-align:center"><div class="sig-rule" style="width:60%;margin:0 auto"></div>${sigNomeCPF('ANUENTE',gv('an_nome1'),gv('an_cpf1'))}</div>`;
+    }
+  }
+  s+=`<div class="sig-line" style="text-align:center"><div class="sig-rule" style="width:60%;margin:0 auto"></div><span class="sig-role">CREDORA</span><b>COOPERATIVA REGIONAL AURIVERDE</b><br>CNPJ: 83.731.927/0001-29</div>`;
+  return s;
+}
+
+/* ===================== RENDER (CPR FÍSICA — texto integral) ===================== */
+function render(){
+  if(cfg.tipo==='financeira'){ renderFinanceira(); return; }
+  const E=flex(cfg.sexo,cfg.ecivil,'E');
+  const A=cfg.anuente==='sim'?flex(cfg.an_sexo,cfg.an_ecivil,'A'):null;
+  const produto = cfg.cultura==='milho'?'milho':(cfg.cultura==='trigo'?'trigo':'soja');
+  const prodFem = (cfg.cultura==='soja');   // soja = feminino; milho/trigo = masculino
+  const valorFull = (gv('valor')?`<span class="fillv">${esc(gv('valor'))}</span>`:`<span class="emptyv">[R$ 0,00]</span>`) +
+                    ' (' + (valorExtensoAtual()?`<span class="fillv lc">${esc(valorExtensoAtual())}</span>`:`<span class="emptyv">[por extenso]</span>`) + ')';
+
+  // ---- preâmbulo emitentes ----
+  let emit;
+  if(cfg.ecivil==='casado'){
+    emit=`${fv('nome1','nome do 1º emitente')}, ${cfg.sexo==='m'?'brasileira':'brasileiro'}, ${cfg.sexo==='m'?'casada':'casado'} sob o regime de ${fvRegime()}, ${fvLc('prof1','profissão')}, ${cfg.sexo==='m'?'portadora':'portador'} da Cédula de Identidade RG nº ${fv('rg1','RG')}, ${cfg.sexo==='m'?'inscrita':'inscrito'} no CPF sob o nº ${fv('cpf1','CPF')}, inscrição estadual de produtor rural nº ${fv('ie1','IE')}, e ${cfg.sexo==='m'?'seu esposo':'sua esposa'} ${fv('nome2','nome do cônjuge')}, ${cfg.sexo==='m'?'brasileiro, casado':'brasileira, casada'}, ${fvLc('prof2','profissão')}, ${cfg.sexo==='m'?'portador':'portadora'} da Cédula de Identidade RG nº ${fv('rg2','RG')}, ${cfg.sexo==='m'?'inscrito':'inscrita'} no CPF sob o nº ${fv('cpf2','CPF')}, ambos residentes e domiciliados na ${fv('endereco','endereço')}, no Município de ${fv('municipio_res','Município/UF')}, telefone ${fv('telefone','telefone')}`;
+  } else {
+    emit=`${fv('nome1','nome do emitente')}, ${E.nac}, ${cfg.ecivil==='solteiro'?(E.fem?'solteira':'solteiro'):''}, ${fvLc('prof1','profissão')}, ${E.portador} da Cédula de Identidade RG nº ${fv('rg1','RG')}, ${E.inscrito} no CPF sob o nº ${fv('cpf1','CPF')}, inscrição estadual de produtor rural nº ${fv('ie1','IE')}, ${E.domic} na ${fv('endereco','endereço')}, no Município de ${fv('municipio_res','Município/UF')}, telefone ${fv('telefone','telefone')}`;
+  }
+
+  // ---- bloco anuente no item 1.2 ----
+  let anu12='';
+  if(A){
+    let qual;
+    if(cfg.an_ecivil==='casado'){
+      qual=`${fv('an_nome1','nome do anuente')}, ${cfg.an_sexo==='m'?'brasileira':'brasileiro'}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, e ${cfg.an_sexo==='m'?'seu esposo':'sua esposa'} ${fv('an_nome2','nome do cônjuge')}, ${cfg.an_sexo==='m'?'brasileiro':'brasileira'}, ${fvLc('an_prof2','profissão')}, CPF nº ${fv('an_cpf2','CPF')}, Cédula de Identidade ${fv('an_rg2','RG')}, residentes e domiciliados na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
+    } else {
+      qual=`${fv('an_nome1','nome do anuente')}, ${A.nac}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, ${A.domic} na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
+    }
+    anu12=` de propriedade ${A.plural?'dos Arrendadores':(A.fem?'da Arrendadora':'do Arrendador')} ${qual}, objeto do contrato de arrendamento${dataArrClausula()}, onde será desenvolvido o produto rural objeto desta Cédula, localizado no município de ${fv('mun_imovel','Município/UF')}, ${A.plural?'os quais anuem':(A.fem?'a qual anui':'o qual anui')} as responsabilidades ${E.de} ${E.plural?'EMITENTES':'EMITENTE'} da presente CPR, na qualidade de ${A.plural?'legítimos proprietários':(A.fem?'legítima proprietária':'legítimo proprietário')} do imóvel rural acima descrito, onde será cultivada a lavoura objeto da presente garantia, ${A.declara} ter pleno conhecimento da constituição do penhor agrícola ora pactuado, concordando integralmente com a sua constituição e eficácia, inclusive de seu registro, comprometendo-se a não praticar qualquer ato que impeça ou dificulte o cultivo, desenvolvimento ou colheita da lavoura dada em garantia, até a plena satisfação da obrigação assumida perante a CREDORA. ${A.plural?'Os ANUENTES reconhecem':(A.fem?'A ANUENTE reconhece':'O ANUENTE reconhece')}, ainda, e ${A.obriga} a respeitar integralmente o penhor constituído, autorizando expressamente, em caso de inadimplemento ${E.de} ${E.plural?'EMITENTES':'EMITENTE'}, o acesso da CREDORA ou de seus representantes ao imóvel rural, para fins de fiscalização, colheita, retirada ou destinação da produção agrícola empenhada, sem que tal acesso configure turbação ou esbulho`;
+  }
+
+  // ---- helper de menção a EMITENTE(S)/ANUENTE(S) ----
+  const EM = E.plural?'EMITENTES':'EMITENTE';
+  const emAnu = A ? ` e <b>${A.plural?'ANUENTES':'ANUENTE'}</b>` : '';
+
+  // ================= DOCUMENTO =================
+  let d=`
+  <div class="demo-note no-print"><b>Modelo CPR Física de ${produto.charAt(0).toUpperCase()+produto.slice(1)}.</b> Texto integral com concordância aplicada à configuração. Campos vazios aparecem como [guia] (some no PDF). Este texto ainda será revisado por você — é fácil ajustar qualquer trecho.</div>
+  <h1>CÉDULA DE PRODUTO RURAL (CPR) N.º ${numCPR()}</h1>
+  <h2 class="qr">QUADRO-RESUMO DA OPERAÇÃO</h2>
+  <table class="qr">
+    <tr><td class="lab">1. Denominação</td><td>Cédula de Produto Rural (CPR), com liquidação <b>FÍSICA</b>, emitida na forma da Lei nº 8.929/1994.</td></tr>
+    <tr><td class="lab">2. Número / emissão</td><td>Nº ${numCPR()}. Cunha Porã/SC, ${emissaoSpan()} de ${anoTxt()}.</td></tr>
+    <tr><td class="lab">3. ${E.plural?'Emitentes':'Emitente'}</td><td>${gv('nome1')?`<span class="fillv">${esc(gv('nome1'))}</span>`:'<span class="emptyv">[nome]</span>'}${cfg.ecivil==='casado'?(gv('nome2')?` e <span class="fillv">${esc(gv('nome2'))}</span>`:' e <span class="emptyv">[cônjuge]</span>'):''}, ${E.plural?'qualificados':E.qualif} no preâmbulo.</td></tr>
+    <tr><td class="lab">4. Credora</td><td>COOPERATIVA REGIONAL AURIVERDE, CNPJ nº 83.731.927/0001-29.</td></tr>
+    <tr><td class="lab">5. Produto rural</td><td>${produto[0].toUpperCase()+produto.slice(1)} em grão (industrial), a granel, safra ${fv('safra','safra')}, no padrão de qualidade descrito no item 1.3.</td></tr>
+    <tr><td class="lab">6. Quantidade a entregar</td><td>${gv('qtde_kg')?`<span class="fillv lc">${esc(gv('qtde_kg'))}</span>`:'<span class="emptyv">[kg]</span>'}, equivalentes a ${fv('qtde_sacas','sacas')} sacas de 60 kg.</td></tr>
+    <tr><td class="lab">7. Local de produção</td><td>Imóvel rural matriculado sob o nº ${fv('matricula','matrícula')}, no RI da Comarca de ${fv('comarca_ri','Comarca')}, Município de ${fv('mun_imovel','Município')}. CAR nº ${fv('car','CAR')}.</td></tr>
+    <tr><td class="lab">8. Área total / cultivada</td><td>Área total do imóvel: ${fv('area_total','ha')} ha. Área cultivada e vinculada a esta Cédula: ${fv('area_cult','ha')} ha.</td></tr>
+    <tr><td class="lab">9. Local de entrega</td><td>Unidade de recebimento da CREDORA situada em ${fv('local_entrega','cidade/UF')}, ou outra por ela indicada, na forma da Cláusula Quarta.</td></tr>
+    <tr><td class="lab">10. Data ou prazo de entrega</td><td>Até ${fv('prazo_entrega','data')}, na forma da Cláusula Quarta.</td></tr>
+    <tr><td class="lab">11. Forma de liquidação</td><td>Exclusivamente <b>FÍSICA</b>, mediante entrega do produto rural, sem liquidação financeira.</td></tr>
+    <tr><td class="lab">12. Instituição de referência (valoração)</td><td>EPAGRI, por intermédio do Centro de Socioeconomia e Planejamento Agrícola (Epagri/Cepa).</td></tr>
+    <tr><td class="lab">13. Praça de formação do preço</td><td>Praça Extremo Oeste Catarinense, conforme levantamento de preços agrícolas da Epagri/Cepa (valor mais comum).</td></tr>
+    <tr><td class="lab">14. Preço de referência e data de apuração</td><td>R$ ${fv('preco_saca','0,00')} por saca de 60 kg, apurado em ${fv('data_apuracao','data')}.</td></tr>
+    <tr><td class="lab">15. Valor referencial de emissão</td><td>${valorFull}, na forma do art. 2º, § 6º, da Resolução CMN nº 4.870/2020.</td></tr>
+    <tr><td class="lab">16. Antecipação do preço paga pela CREDORA</td><td>${valorFull}, na forma da Cláusula Terceira.</td></tr>
+    <tr><td class="lab">17. Data e forma do pagamento da antecipação</td><td>Pagamento até ${pagamentoSpan()} (emissão + 30 dias), mediante crédito na conta movimento junto à CREDORA, na forma do item 3.2.</td></tr>
+    <tr><td class="lab">18. Garantia</td><td>Penhor agrícola de primeiro grau sobre a lavoura e a produção de ${produto} da área identificada nos itens 7 e 8.</td></tr>
+    <tr><td class="lab">19. Encargos moratórios</td><td>Juros de mora de 1% ao mês; correção monetária pela variação positiva do INPC; multa não compensatória de 2% (dois por cento), na forma da Cláusula Sexta.</td></tr>
+    <tr><td class="lab">20. Registro do título</td><td>Entidade autorizada pelo Banco Central do Brasil, em até 30 (trinta) dias úteis da emissão.</td></tr>
+    <tr><td class="lab">21. Foro</td><td>Comarca de Cunha Porã/SC.</td></tr>
+  </table>
+
+  <p class="cl">O Quadro-Resumo acima integra esta Cédula para todos os fins e reúne, de forma destacada, os elementos exigidos pelo art. 3º da Lei nº 8.929/1994 e pelo art. 2º, § 6º, da Resolução CMN nº 4.870/2020. Em caso de divergência entre o Quadro-Resumo e o corpo das cláusulas, prevalecerá o disposto nas cláusulas.</p>
+
+  <p class="cl pg-break"><b>${E.plural?'EMITENTES':'EMITENTE'}:</b> ${emit}.</p>
+
+  <p class="cl"><b>CREDORA: COOPERATIVA REGIONAL AURIVERDE</b>, pessoa jurídica de direito privado, inscrita no CNPJ/MF sob o n.º 83.731.927/0001-29, com sede na Rua Moura Brasil, nº 791, no Município e Comarca de Cunha Porã/SC, CEP 89890-000, representada por seu Gerente de Filial, ${fv('gerente','nome do gerente')}, brasileiro, inscrito no CPF sob o nº ${fv('cpfger','CPF')}, residente e domiciliado na Rua ${fv('end_rua','rua')}, nº ${fv('end_num','nº')}, Bairro ${fv('end_bairro','bairro')}, no Município de ${fv('end_municipio','Município/UF')}.</p>
+
+  <p class="cl">As partes acima qualificadas têm entre si justo e contratado a emissão da presente Cédula de Produto Rural com liquidação física, que se regerá pela Lei nº 8.929/1994, pela Resolução CMN nº 4.870/2020 e pelas cláusulas seguintes.</p>
+
+  <div class="cl-h">CLÁUSULA PRIMEIRA – DO OBJETO E DA PROMESSA DE ENTREGA</div>
+  <p class="cl">1.1. ${E.artU} <b>${EM}</b>, na qualidade de ${E.plural?'produtores rurais':'produtor'+(E.fem?'a':'')+' rural'}, ${E.promete} <b>entregar</b> à <b>CREDORA</b>, ou à sua ordem, na forma, no prazo e no local previstos na Cláusula Quarta, a quantidade de ${gv('qtde_kg')?`<span class="fillv lc">${esc(gv('qtde_kg'))}</span>`:'<span class="emptyv">[kg]</span>'} (${fv('qtde_sacas','sacas')} sacas de 60 kg) de ${produto} em grão (industrial), safra ${fv('safra','safra')}, produzida na área identificada no item 1.2, em promessa pura e simples de entrega do produto, nos termos do art. 3º, IV, da Lei nº 8.929/1994.</p>
+  <p class="cl">1.2. <b>Local onde será desenvolvido o produto rural</b> (art. 3º, IV, da Lei nº 8.929/1994): ${prodFem?'a':'o'} ${produto} objeto desta Cédula será ${prodFem?'cultivada':'cultivado'} no imóvel rural descrito na Cláusula Oitava, com área total de ${fv('area_total','ha')} hectares, dos quais ${fv('area_cult','ha')} hectares correspondem à área efetivamente cultivada e vinculada a esta Cédula${anu12}.</p>
+  <p class="cl">1.3. <b>Especificações de qualidade</b>: ${specsQualidade()}.</p>
+  <p class="cl">1.4. Esta Cédula é emitida com <b>liquidação exclusivamente física</b>, de modo que a obrigação ${E.de} <b>${EM}</b> consiste na entrega efetiva do produto rural descrito nos itens 1.1 a 1.3, e não em pagamento em dinheiro, não se lhe aplicando o disposto no art. 4º-A da Lei nº 8.929/1994.</p>
+  <p class="cl">1.5. A obrigação de entrega tem por objeto coisa incerta, determinada pelo gênero, pela quantidade e pela qualidade acima, subsistindo integralmente ainda que ocorra frustração, total ou parcial, da safra produzida na área do item 1.2, hipótese em que ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> ${E.obriga} a adquirir de terceiros e a entregar produto de igual gênero, quantidade e qualidade, nos termos do art. 246 do Código Civil e do art. 11 da Lei nº 8.929/1994, ressalvado o caso fortuito ou de força maior comprovadamente impeditivo da entrega.</p>
+
+  <div class="cl-h">CLÁUSULA SEGUNDA – DO VALOR REFERENCIAL, DA INSTITUIÇÃO DE REFERÊNCIA E DO CRITÉRIO DE VALORAÇÃO</div>
+  <p class="cl">2.1. <b>Instituição de referência</b>: as partes elegem, como instituição responsável pela apuração e divulgação do preço do produto, a <b>EPAGRI – Empresa de Pesquisa Agropecuária e Extensão Rural de Santa Catarina</b>, por intermédio do seu Centro de Socioeconomia e Planejamento Agrícola (Epagri/Cepa), instituição pública estadual de reconhecida idoneidade, que realiza levantamento de preços agrícolas em praças do Estado de Santa Catarina, com atualização diária e divulgação pública e gratuita no endereço eletrônico cepa.epagri.sc.gov.br.</p>
+  <p class="cl">2.2. <b>Praça e índice de referência</b>: praça Extremo Oeste Catarinense, integrante do levantamento de preços agrícolas da Epagri/Cepa, adotando-se como referência o valor mais comum recebido pelos produtores rurais pela saca de 60 kg de ${produto} em grão divulgado para a referida praça.</p>
+  <p class="cl">2.3. <b>Valor referencial de emissão</b>: para os fins do art. 2º, § 6º, da Resolução CMN nº 4.870/2020, o valor referencial de emissão desta Cédula é de ${valorFull}, correspondente à multiplicação da quantidade indicada no item 1.1 pelo preço de referência de R$ ${fv('preco_saca','0,00')} por saca de 60 kg, apurado em ${fv('data_apuracao','data')}. O valor referencial serve exclusivamente para os fins de registro e não constitui obrigação de pagamento, que é substituída pela entrega do produto.</p>
+  <p class="cl">2.4. <b>Critério de valoração</b>: nas hipóteses em que esta Cédula admita conversão da obrigação de entrega em pagamento em dinheiro, notadamente na forma da Cláusula Sexta, o produto será valorado pelo preço ${prodFem?'da':'do'} ${produto} divulgado pela Epagri/Cepa para a praça indicada no item 2.2, vigente na data do inadimplemento, multiplicado pela quantidade não entregue.</p>
+
+  <div class="cl-h">CLÁUSULA TERCEIRA – DA ANTECIPAÇÃO DO PREÇO PELA CREDORA</div>
+  <p class="cl">3.1. <b>Antecipação do preço</b>: em contraprestação à promessa de entrega objeto desta Cédula, a <b>CREDORA</b> antecipa ${E.art==='os'?'aos':(E.fem?'à':'ao')} <b>${EM}</b> o preço ${prodFem?'da':'do'} ${produto} a ser entregue, no valor de ${valorFull}, livre de quaisquer deduções, em parcela única, até a data indicada no item 17 do Quadro-Resumo. A antecipação do preço constitui a única contraprestação devida pela <b>CREDORA</b>, não incidindo sobre a operação juros remuneratórios ou encargos financeiros de qualquer natureza.</p>
+  <p class="cl">3.2. <b>Forma de pagamento</b>: o pagamento da antecipação será realizado mediante crédito na conta movimento junto à <b>CREDORA</b>, de titularidade ${E.de} <b>${EM}</b>, valendo o respectivo aviso de crédito como comprovante e prova plena do pagamento, independentemente de recibo em apartado.</p>
+  <p class="cl">3.3. <b>Condições da antecipação</b>: o pagamento da antecipação fica condicionado, cumulativamente, (i) à assinatura desta Cédula por todos os signatários e testemunhas; (ii) à entrega, ${E.de} <b>${EM}</b>, da matrícula atualizada do imóvel, do recibo de inscrição no CAR e dos demais documentos exigidos pela <b>CREDORA</b>; e (iii) à adoção das providências necessárias ao registro do título e à averbação da garantia, na forma da Cláusula Nona.</p>
+
+  <div class="cl-h">CLÁUSULA QUARTA – DO LOCAL, DO PRAZO E DAS CONDIÇÕES DE ENTREGA</div>
+  <p class="cl">4.1. <b>Local de entrega</b> (art. 3º, V, da Lei nº 8.929/1994): a entrega será realizada na unidade de recebimento da <b>CREDORA</b> situada em ${fv('local_entrega','cidade/UF')}, ou em outra unidade por ela indicada por escrito com antecedência mínima de 5 (cinco) dias, correndo o transporte, o frete e os riscos até a efetiva entrega por conta exclusiva ${E.de} <b>${EM}</b>.</p>
+  <p class="cl">4.2. <b>Prazo de entrega</b>: a entrega deverá ocorrer até ${fv('prazo_entrega','data')}, admitida a entrega em remessas parciais dentro desse prazo. A entrega antecipada, total ou parcial, dependerá de prévia anuência da <b>CREDORA</b>, nos termos do art. 13 da Lei nº 8.929/1994.</p>
+  <p class="cl">4.3. <b>Condições de entrega</b>: o produto será entregue a granel, limpo, seco e em condições de armazenamento, no padrão de qualidade do item 1.3. Eventuais divergências de umidade, impureza e avarias em relação a esse padrão serão ajustadas mediante os descontos, quebras técnicas e classificação praticados pela <b>CREDORA</b> na recepção de grãos, aplicáveis de forma isonômica aos seus associados.</p>
+  <p class="cl">4.4. <b>Prova da entrega</b>: a entrega será comprovada pelo ticket de balança, romaneio ou comprovante de recebimento emitido pela <b>CREDORA</b>, documentos que registrarão a data, a quantidade e a classificação do produto recebido, anotando-se o cumprimento parcial no verso desta Cédula, nos termos do art. 4º, parágrafo único, da Lei nº 8.929/1994.</p>
+  <p class="cl">4.5. <b>Quitação</b>: entregue integralmente o produto no padrão e na quantidade pactuados, a <b>CREDORA</b> fornecerá termo de quitação e promoverá, no prazo de 10 (dez) dias úteis, a informação da liquidação à entidade registradora e as providências necessárias ao cancelamento da garantia perante o Registro de Imóveis.</p>
+
+  <div class="cl-h">CLÁUSULA QUINTA – DA PESAGEM, DA CLASSIFICAÇÃO E DO RECEBIMENTO</div>
+  <p class="cl">5.1. A pesagem e a classificação do produto serão realizadas na unidade de recebimento da <b>CREDORA</b>, por seus equipamentos e prepostos, na presença ${E.de} <b>${EM}</b> ou de quem por ${E.plural?'eles':(E.fem?'ela':'ele')} for indicado, facultada ${E.plural?'a estes':'a este'} a conferência dos resultados no ato da recepção.</p>
+
+  <div class="cl-h">CLÁUSULA SEXTA – DO INADIMPLEMENTO DA ENTREGA</div>
+  <p class="cl">6.1. Não realizada a entrega, total ou parcial, no prazo e nas condições da Cláusula Quarta, constituir-se-á ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> em mora de pleno direito a partir do dia seguinte ao termo final, independentemente de aviso, notificação ou interpelação, nos termos do art. 3º, II, da Lei nº 8.929/1994 e do art. 397 do Código Civil.</p>
+  <p class="cl">6.2. <b>Execução para entrega</b>: verificado o inadimplemento, a <b>CREDORA</b> poderá promover a execução para entrega de coisa incerta, com a consequente busca e apreensão do produto, nos termos do art. 15 da Lei nº 8.929/1994 e dos arts. 811 a 813 do Código de Processo Civil, constituindo esta Cédula título executivo extrajudicial, líquido e certo quanto à quantidade e à qualidade.</p>
+  <p class="cl">6.3. <b>Conversão em perdas e danos</b>: alternativamente, a critério exclusivo da <b>CREDORA</b>, a obrigação de entrega não cumprida poderá ser convertida em pagamento em dinheiro, correspondente ao valor da quantidade não entregue, valorada na forma do item 2.4, acrescido dos encargos moratórios previstos no item 6.4 e das perdas e danos apuradas, sem prejuízo da restituição da antecipação do preço correspondente ao produto não entregue.</p>
+  <p class="cl">6.4. <b>Encargos moratórios</b>: sobre o valor apurado na forma do item 6.3 incidirão os encargos indicados no item 19 do Quadro-Resumo: (i) juros de mora de 1% ao mês; (ii) correção monetária pela variação positiva do INPC; e (iii) multa não compensatória de 2% (dois por cento), calculados desde a data do inadimplemento até a liquidação final.</p>
+
+  <div class="cl-h">CLÁUSULA SÉTIMA – DO VENCIMENTO ANTECIPADO</div>
+  <p class="cl">7.1. A <b>CREDORA</b> poderá declarar esta Cédula vencida antecipadamente, tornando imediatamente exigível a entrega da totalidade do produto ou, à sua escolha, o valor equivalente apurado na forma do item 2.4, independentemente de aviso extrajudicial, interpelação judicial ou notificação prévia, nas seguintes hipóteses: a) inadimplemento, ${E.de} <b>${EM}</b>, de qualquer obrigação prevista nesta Cédula; b) alienação, promessa de alienação ou constituição de ônus reais sobre os bens dados em garantia, sem a anuência prévia e expressa da CREDORA; c) declaração judicial de insolvência civil, pedido de falência ou de recuperação judicial ou extrajudicial ${E.de} <b>${EM}</b>; d) falecimento, incapacidade total ou pedido de interdição de qualquer ${E.de} <b>${EM}</b>; e) protesto de título ou descumprimento de decisão judicial transitada em julgado; f) inadimplemento ou vencimento antecipado de qualquer outra obrigação ${E.de} <b>${EM}</b> perante a CREDORA; g) cancelamento ou suspensão de autorizações e licenças ambientais essenciais à atividade; h) alteração da atividade de modo que deixe de atuar como produtor rural; i) prática de ato tendente a anular, revisar ou repudiar esta Cédula; j) falsidade ou inexatidão das declarações prestadas na Cláusula Nona; k) descumprimento das obrigações de registro e averbação previstas na Cláusula Oitava.</p>
+
+  <div class="cl-h">CLÁUSULA OITAVA – DA GARANTIA CEDULARMENTE CONSTITUÍDA E DA IDENTIFICAÇÃO DO IMÓVEL</div>
+  <p class="cl">8.1. Nos termos do art. 5º da Lei nº 8.929/1994, dos arts. 1.438 e 1.442, II e III, do Código Civil e do art. 6º, I e II, da Lei nº 492/1937, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> ${E.constitui} em favor da <b>CREDORA</b> <b>penhor agrícola de primeiro grau</b> sobre a lavoura e a produção de ${produto} descritas na Cláusula Primeira, pendentes ou em formação, cultivadas na área identificada no item 1.2, como garantia do integral cumprimento da obrigação de entrega assumida.</p>
+  <p class="cl">8.2. <b>Identificação do imóvel</b>: imóvel rural ${A?'objeto do arrendamento indicado no item 1.2':`de propriedade ${E.de} próprio${E.plural?'s':''} <b>${EM}</b>`}, matriculado sob o nº ${fv('matricula','matrícula')} no Cartório de Registro de Imóveis da Comarca de ${fv('comarca_ri','Comarca')}, situado no Município de ${fv('mun_imovel','Município')}, com área total de ${fv('area_total','ha')} hectares, inscrito no CAR sob o nº ${fv('car','CAR')} e no Cadastro de Imóveis Rurais (CCIR/Incra) sob o nº ${fv('ccir','CCIR')}, cuja área cultivada vinculada a esta Cédula é de ${fv('area_cult','ha')} hectares.</p>
+  <p class="cl">8.3. O produto empenhado permanecerá em poder ${E.de} <b>${EM}</b>, que ${E.assume} a condição de fiel${E.plural?'is':''} depositário${E.plural?'s':''}, sem qualquer remuneração, respondendo pela guarda e conservação dos bens na forma dos arts. 627 a 646 do Código Civil e do art. 7º, § 1º, da Lei nº 8.929/1994.</p>
+  <p class="cl">8.4. É expressamente vedada a constituição de qualquer novo ônus ou garantia sobre a lavoura e a produção empenhadas, bem como a emissão de outra Cédula de Produto Rural ou contrato de compra e venda futura referenciados à mesma safra e área, sem prévia anuência da <b>CREDORA</b>, sob pena de vencimento antecipado.</p>
+  <p class="cl">8.5. Verificada diminuição ou depreciação da garantia constituída, a <b>CREDORA</b> comunicará o fato ${E.de} <b>${EM}</b>, por escrito, que ${E.plural?'deverão':'deverá'} reforçá-la no prazo de 10 (dez) dias, sob pena de vencimento antecipado.</p>
+  <p class="cl">8.6. ${E.artU} <b>${EM}</b> ${E.obriga} a manter a lavoura e o produto empenhados cobertos por seguro agrícola ou instrumento equivalente, indicando a <b>CREDORA</b> como beneficiária da indenização até o limite do seu crédito.</p>
+  <p class="cl">8.7. Os bens vinculados a esta Cédula não serão penhorados ou sequestrados por outras dívidas ${E.de} <b>${EM}</b>, cumprindo denunciar a existência desta Cédula às autoridades incumbidas da diligência, nos termos do art. 18 da Lei nº 8.929/1994.</p>
+  <p class="cl">8.8. Sem prejuízo do registro previsto no item 20 do Quadro-Resumo, o penhor agrícola constituído nesta Cláusula será levado a registro no Cartório de Registro de Imóveis da circunscrição em que localizado o imóvel indicado no item 8.2, na forma do art. 12, §§ 1º e 2º, da Lei nº 8.929/1994, no prazo de 3 (três) dias úteis. Para os fins do registro da garantia, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b>${emAnu} ${E.plural||A?'obrigam-se':'obriga-se'} a fornecer, às suas expensas, todos os documentos exigidos pelo Oficial de Registro de Imóveis.</p>
+
+  <div class="cl-h">CLÁUSULA NONA – DAS DECLARAÇÕES ${E.plural?'DOS EMITENTES':'DO EMITENTE'}</div>
+  <p class="cl">9.1. ${E.artU} <b>${EM}</b> ${E.declara}, sob as penas da lei: a) que ${E.possui} legitimação para a emissão desta Cédula, na forma do art. 2º, I, da Lei nº 8.929/1994; b) que são verdadeiras e exatas todas as informações relativas à qualificação, área cultivada, safra, quantidade e qualidade do produto e aos bens oferecidos em garantia, ciente de que declaração falsa caracteriza crime, nos termos do art. 17 da Lei nº 8.929/1994; c) que a lavoura e a produção empenhadas estão livres de ônus e não foram vinculadas a outra CPR, contrato de compra e venda futura ou operação de barter referente à mesma safra e área; d) que não se ${E.plural?'encontram':'encontra'} em insolvência, recuperação judicial ou extrajudicial; e) que o imóvel indicado no item 8.2 possui inscrição regular no CAR e que a atividade observa a legislação ambiental e trabalhista, sem trabalho em condições análogas às de escravo ou infantil; f) que a lavoura e a produção dadas em garantia não são essenciais ao exercício da atividade, para os fins do art. 5º, § 1º, da Lei nº 8.929/1994; g) que ${E.recebe} a antecipação do preço prevista na Cláusula Terceira como única contraprestação da CREDORA, ciente de que a obrigação consiste na entrega do produto; h) que ${E.esta} ciente de que o instrumento foi ajustado em caráter irrevogável e irretratável.</p>
+
+  <div class="cl-h">CLÁUSULA DÉCIMA – DA FISCALIZAÇÃO</div>
+  <p class="cl">10.1. A <b>CREDORA</b>, por intermédio de pessoa por ela indicada, poderá, sempre que julgar conveniente, vistoriar a lavoura e o produto dados em penhor, bem como acompanhar o desenvolvimento da cultura e a formação da produção, sem que possa ser obstada ${E.de} <b>${EM}</b>${emAnu} ou por terceiros, obrigando-se ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b>${emAnu} a franquear o acesso à área e a apresentar os documentos solicitados.</p>
+
+  <div class="cl-h">CLÁUSULA DÉCIMA PRIMEIRA – DOS TRIBUTOS E DESPESAS</div>
+  <p class="cl">11.1. Os tributos incidentes em decorrência desta Cédula, quando devidos, serão pagos pelo respectivo contribuinte, de acordo com a legislação aplicável.</p>
+  <p class="cl">11.2. Todas as despesas com registro, depósito, averbação, formalização, cobrança, honorários advocatícios e custas judiciais e extrajudiciais decorrentes desta Cédula serão suportadas exclusivamente ${E.de} <b>${EM}</b>.</p>
+
+  <div class="cl-h">CLÁUSULA DÉCIMA SEGUNDA – DAS DISPOSIÇÕES GERAIS</div>
+  <p class="cl">12.1. Esta Cédula constitui título executivo extrajudicial, líquido e certo quanto à quantidade e à qualidade do produto, nos termos do art. 4º da Lei nº 8.929/1994 e do art. 784, III e XII, do Código de Processo Civil, aparelhando execução para entrega de coisa incerta e, na hipótese de conversão, execução por quantia certa.</p>
+  <p class="cl">12.2. Esta Cédula é emitida à ordem da <b>CREDORA</b>, transmissível por endosso completo, na forma do art. 3º, III, e do art. 10 da Lei nº 8.929/1994.</p>
+  <p class="cl">12.3. Esta Cédula poderá ser aditada por termo aditivo que a integre, datado e assinado ${E.de} <b>${EM}</b>, ${(E.plural||A)?'pelos garantidores':'pelo garantidor'} e pela CREDORA, com a mesma formalização e registro do título original, na forma do art. 3º, § 5º, da Lei nº 8.929/1994.</p>
+  <p class="cl">12.4. Fica a <b>CREDORA</b> autorizada, mediante mandato irrevogável, na forma do art. 684 do Código Civil, a promover o registro, aditamento, retificação, atualização e baixa do título perante a entidade registradora.</p>
+  <p class="cl">12.5. As partes admitem a assinatura eletrônica desta Cédula, nos termos do art. 3º, § 4º, da Lei nº 8.929/1994 e da Lei nº 14.063/2020.</p>
+  <p class="cl">12.6. As comunicações entre as partes serão consideradas válidas quando remetidas aos endereços indicados no preâmbulo.</p>
+  <p class="cl">12.7. A tolerância quanto ao descumprimento de qualquer obrigação não implica novação, renúncia ou alteração das condições pactuadas.</p>
+  <p class="cl">12.8. A eventual nulidade de qualquer cláusula não afetará as demais disposições.</p>
+  <p class="cl">12.9. As partes elegem o Foro da Comarca de Cunha Porã/SC, com renúncia a qualquer outro.</p>
+
+  <p class="cl">E, por estarem justas e contratadas, as partes assinam esta Cédula, em 3 (três) vias de igual teor e forma.</p>
+  <p class="cl" style="text-align:right;margin-top:20px">Cunha Porã/SC, ${emissaoSpan()} de ${anoTxt()}.</p>
+  `;
+
+  // ---- assinaturas ----
+  d+=blocoAssinaturas();
+
+  document.getElementById('doc').innerHTML=destacarTermos(d);
+}
+
+/* ===================== RENDER (CPR FINANCEIRA — texto integral) ===================== */
+function renderFinanceira(){
+  const E=flex(cfg.sexo,cfg.ecivil,'E');
+  const A=cfg.anuente==='sim'?flex(cfg.an_sexo,cfg.an_ecivil,'A'):null;
+  const produto = cfg.cultura==='milho'?'milho':(cfg.cultura==='trigo'?'trigo':'soja');
+  const prodFem = (cfg.cultura==='soja');   // soja = feminino; milho/trigo = masculino
+  const valorFull = (gv('valor')?`<span class="fillv">${esc(gv('valor'))}</span>`:`<span class="emptyv">[R$ 0,00]</span>`) +
+                    ' (' + (valorExtensoAtual()?`<span class="fillv lc">${esc(valorExtensoAtual())}</span>`:`<span class="emptyv">[por extenso]</span>`) + ')';
+  const EM = E.plural?'EMITENTES':'EMITENTE';
+  const emAnu = A ? ` e <b>${A.plural?'ANUENTES':'ANUENTE'}</b>` : '';
+
+  // preâmbulo emitentes
+  let emit;
+  if(cfg.ecivil==='casado'){
+    emit=`${fv('nome1','nome do 1º emitente')}, ${cfg.sexo==='m'?'brasileira':'brasileiro'}, ${cfg.sexo==='m'?'casada':'casado'} sob o regime de ${fvRegime()}, ${fvLc('prof1','profissão')}, ${cfg.sexo==='m'?'portadora':'portador'} da Cédula de Identidade RG nº ${fv('rg1','RG')}, ${cfg.sexo==='m'?'inscrita':'inscrito'} no CPF sob o nº ${fv('cpf1','CPF')}, inscrição estadual de produtor rural nº ${fv('ie1','IE')}, e ${cfg.sexo==='m'?'seu esposo':'sua esposa'} ${fv('nome2','nome do cônjuge')}, ${cfg.sexo==='m'?'brasileiro, casado':'brasileira, casada'}, ${fvLc('prof2','profissão')}, ${cfg.sexo==='m'?'portador':'portadora'} da Cédula de Identidade RG nº ${fv('rg2','RG')}, ${cfg.sexo==='m'?'inscrito':'inscrita'} no CPF sob o nº ${fv('cpf2','CPF')}, ambos residentes e domiciliados na ${fv('endereco','endereço')}, no Município de ${fv('municipio_res','Município/UF')}, telefone ${fv('telefone','telefone')}`;
+  } else {
+    emit=`${fv('nome1','nome do emitente')}, ${E.nac}, ${cfg.ecivil==='solteiro'?(E.fem?'solteira':'solteiro'):''}, ${fvLc('prof1','profissão')}, ${E.portador} da Cédula de Identidade RG nº ${fv('rg1','RG')}, ${E.inscrito} no CPF sob o nº ${fv('cpf1','CPF')}, inscrição estadual de produtor rural nº ${fv('ie1','IE')}, ${E.domic} na ${fv('endereco','endereço')}, no Município de ${fv('municipio_res','Município/UF')}, telefone ${fv('telefone','telefone')}`;
+  }
+
+  // bloco anuente no item 1.2
+  let anu12='';
+  if(A){
+    let qual;
+    if(cfg.an_ecivil==='casado'){
+      qual=`${fv('an_nome1','nome do anuente')}, ${cfg.an_sexo==='m'?'brasileira':'brasileiro'}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, e ${cfg.an_sexo==='m'?'seu esposo':'sua esposa'} ${fv('an_nome2','nome do cônjuge')}, ${cfg.an_sexo==='m'?'brasileiro':'brasileira'}, ${fvLc('an_prof2','profissão')}, CPF nº ${fv('an_cpf2','CPF')}, Cédula de Identidade ${fv('an_rg2','RG')}, residentes e domiciliados na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
+    } else {
+      qual=`${fv('an_nome1','nome do anuente')}, ${A.nac}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, ${A.domic} na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
+    }
+    anu12=` de propriedade ${A.plural?'dos Arrendadores':(A.fem?'da Arrendadora':'do Arrendador')} ${qual}, objeto do contrato de arrendamento${dataArrClausula()}, localizado no município de ${fv('mun_imovel','Município/UF')}, ${A.plural?'os quais anuem':(A.fem?'a qual anui':'o qual anui')} as responsabilidades ${E.de} ${E.plural?'EMITENTES':'EMITENTE'} da presente CPR, na qualidade de ${A.plural?'legítimos proprietários':(A.fem?'legítima proprietária':'legítimo proprietário')} do imóvel, ${A.declara} ter pleno conhecimento da constituição do penhor agrícola ora pactuado, concordando integralmente com a sua constituição, eficácia e registro, comprometendo-se a não praticar qualquer ato que impeça ou dificulte o cultivo, desenvolvimento ou colheita da lavoura dada em garantia, e autorizando expressamente, em caso de inadimplemento, o acesso da CREDORA ou de seus representantes ao imóvel rural para fins de fiscalização, colheita, retirada ou destinação da produção empenhada, sem que tal acesso configure turbação ou esbulho`;
+  }
+
+  let d=`
+  <div class="demo-note no-print"><b>Modelo CPR Financeira de ${produto.charAt(0).toUpperCase()+produto.slice(1)}.</b> Texto integral com concordância aplicada à configuração. Campos vazios aparecem como [guia] (some no PDF).</div>
+  <h1>CÉDULA DE PRODUTO RURAL FINANCEIRA N.º ${numCPR()}</h1>
+  <h2 class="qr">QUADRO-RESUMO DA OPERAÇÃO</h2>
+  <table class="qr">
+    <tr><td class="lab">1. Denominação</td><td>Cédula de Produto Rural com Liquidação <b>FINANCEIRA</b> (CPR Financeira), emitida na forma da Lei nº 8.929/1994.</td></tr>
+    <tr><td class="lab">2. Número / emissão</td><td>Nº ${numCPR()}. Cunha Porã/SC, ${emissaoSpan()} de ${anoTxt()}.</td></tr>
+    <tr><td class="lab">3. ${E.plural?'Emitentes':'Emitente'}</td><td>${gv('nome1')?`<span class="fillv">${esc(gv('nome1'))}</span>`:'<span class="emptyv">[nome]</span>'}${cfg.ecivil==='casado'?(gv('nome2')?` e <span class="fillv">${esc(gv('nome2'))}</span>`:' e <span class="emptyv">[cônjuge]</span>'):''}, ${E.plural?'qualificados':E.qualif} no preâmbulo.</td></tr>
+    <tr><td class="lab">4. Credora</td><td>COOPERATIVA REGIONAL AURIVERDE, CNPJ nº 83.731.927/0001-29.</td></tr>
+    <tr><td class="lab">5. Produto rural</td><td>${produto[0].toUpperCase()+produto.slice(1)} em grão, a granel, safra ${fv('safra','safra')}, no padrão de qualidade descrito no item 1.3.</td></tr>
+    <tr><td class="lab">6. Quantidade referenciada</td><td>${gv('qtde_kg')?`<span class="fillv lc">${esc(gv('qtde_kg'))}</span>`:'<span class="emptyv">[kg]</span>'}, equivalentes a ${fv('qtde_sacas','sacas')} sacas de 60 kg.</td></tr>
+    <tr><td class="lab">7. Local de produção</td><td>Imóvel rural matriculado sob o nº ${fv('matricula','matrícula')}, no RI da Comarca de ${fv('comarca_ri','Comarca')}, Município de ${fv('mun_imovel','Município')}. CAR nº ${fv('car','CAR')}.</td></tr>
+    <tr><td class="lab">8. Área total / cultivada</td><td>Área total do imóvel: ${fv('area_total','ha')} ha. Área cultivada e vinculada a esta Cédula: ${fv('area_cult','ha')} ha.</td></tr>
+    <tr><td class="lab">9. Instituição de referência para a precificação</td><td>EPAGRI, por intermédio do Centro de Socioeconomia e Planejamento Agrícola (Epagri/Cepa).</td></tr>
+    <tr><td class="lab">10. Praça de formação do preço</td><td>Praça Extremo Oeste Catarinense, conforme levantamento de preços agrícolas da Epagri/Cepa (valor mais comum).</td></tr>
+    <tr><td class="lab">11. Preço de referência e data de apuração</td><td>R$ ${fv('preco_saca','0,00')} por saca de 60 kg, apurado em ${fv('data_apuracao','data')}.</td></tr>
+    <tr><td class="lab">12. Valor referencial de emissão</td><td>${valorFull}, na forma do art. 2º, § 6º, da Resolução CMN nº 4.870/2020.</td></tr>
+    <tr><td class="lab">13. Valor líquido a desembolsar</td><td>${valorFull}.</td></tr>
+    <tr><td class="lab">14. Data e forma do desembolso</td><td>Desembolso até ${pagamentoSpan()} (emissão + 30 dias), mediante crédito na conta movimento junto à credora, indicada no item 3.2.</td></tr>
+    <tr><td class="lab">15. Juros remuneratórios</td><td>0,00% ao mês (0,00% ao ano), na forma da Cláusula Quarta.</td></tr>
+    <tr><td class="lab">16. Montante final devido no vencimento</td><td>${valorFull}.</td></tr>
+    <tr><td class="lab">17. Vencimento</td><td>${dataBRField('vencimento','data')}.</td></tr>
+    <tr><td class="lab">18. Forma de liquidação</td><td>Exclusivamente <b>FINANCEIRA</b>, em moeda corrente nacional, sem obrigação de entrega física do produto.</td></tr>
+    <tr><td class="lab">19. Garantia</td><td>Penhor agrícola de primeiro grau sobre a lavoura e a produção de ${produto} da área identificada nos itens 7 e 8.</td></tr>
+    <tr><td class="lab">20. Encargos moratórios</td><td>Juros de mora de 1% ao mês; correção monetária pelo INPC; multa não compensatória de 2% (dois por cento).</td></tr>
+    <tr><td class="lab">21. Registro do título</td><td>Entidade autorizada pelo Banco Central do Brasil, em até 30 (trinta) dias úteis da emissão.</td></tr>
+    <tr><td class="lab">22. Foro</td><td>Comarca de Cunha Porã/SC.</td></tr>
+  </table>
+
+  <p class="cl">O Quadro-Resumo acima integra esta Cédula para todos os fins e reúne, de forma destacada, os elementos exigidos pelo art. 3º da Lei nº 8.929/1994, pelo art. 4º-A da mesma Lei e pelo art. 2º, § 6º, da Resolução CMN nº 4.870/2020. Em caso de divergência entre o Quadro-Resumo e o corpo das cláusulas, prevalecerá o disposto nas cláusulas.</p>
+
+  <p class="cl pg-break"><b>${E.plural?'EMITENTES':'EMITENTE'}:</b> ${emit}.</p>
+
+  <p class="cl"><b>CREDORA: COOPERATIVA REGIONAL AURIVERDE</b>, pessoa jurídica de direito privado, inscrita no CNPJ/MF sob o n.º 83.731.927/0001-29, com sede na Rua Moura Brasil, nº 791, no Município e Comarca de Cunha Porã/SC, CEP 89890-000, representada por seu Gerente de Filial, ${fv('gerente','nome do gerente')}, brasileiro, inscrito no CPF sob o nº ${fv('cpfger','CPF')}, residente e domiciliado na Rua ${fv('end_rua','rua')}, nº ${fv('end_num','nº')}, Bairro ${fv('end_bairro','bairro')}, no Município de ${fv('end_municipio','Município/UF')}.</p>
+
+  <p class="cl">As partes acima qualificadas têm entre si justo e contratado a emissão da presente Cédula de Produto Rural com Liquidação Financeira, que se regerá pela Lei nº 8.929/1994, pela Resolução CMN nº 4.870/2020 e pelas cláusulas seguintes.</p>
+
+  <div class="cl-h">CLÁUSULA PRIMEIRA – DO OBJETO E DA PROMESSA DE PAGAMENTO</div>
+  <p class="cl">1.1. ${E.artU} <b>${EM}</b>, na qualidade de ${E.plural?'produtores rurais':'produtor'+(E.fem?'a':'')+' rural'}, ${E.promete} pagar à <b>CREDORA</b> ou à sua ordem, na data de vencimento indicada no item 17 do Quadro-Resumo, a importância em dinheiro apurada na forma da Cláusula Segunda, correspondente a ${gv('qtde_kg')?`<span class="fillv lc">${esc(gv('qtde_kg'))}</span>`:'<span class="emptyv">[kg]</span>'} (${fv('qtde_sacas','sacas')} sacas de 60 kg) de ${produto} em grão (industrial), safra ${fv('safra','safra')}, produzida na área identificada no item 1.2.</p>
+  <p class="cl">1.2. <b>Local onde será desenvolvido o produto rural</b> (art. 3º, IV, da Lei nº 8.929/1994): ${prodFem?'a':'o'} ${produto} ${prodFem?'referenciada':'referenciado'} nesta Cédula será ${prodFem?'cultivada':'cultivado'} no imóvel rural descrito na Cláusula Sétima, com área total de ${fv('area_total','ha')} hectares, dos quais ${fv('area_cult','ha')} hectares correspondem à área efetivamente cultivada e vinculada a esta Cédula${anu12}.</p>
+  <p class="cl">1.3. <b>Especificações de qualidade</b>: ${specsQualidade()}.</p>
+  <p class="cl">1.4. Esta Cédula é emitida com <b>liquidação exclusivamente financeira</b>, nos termos do art. 4º-A da Lei nº 8.929/1994, de modo que a obrigação ${E.de} <b>${EM}</b> consiste em pagamento em dinheiro, e não em entrega física do produto, servindo a descrição do produto, da safra, da área e da quantidade como referencial de apuração do valor devido.</p>
+
+  <div class="cl-h">CLÁUSULA SEGUNDA – DO PREÇO DE REFERÊNCIA, DA INSTITUIÇÃO RESPONSÁVEL PELA APURAÇÃO E DOS CRITÉRIOS DE OBTENÇÃO DO VALOR DE LIQUIDAÇÃO</div>
+  <p class="cl">2.1. <b>Instituição de referência</b>: as partes elegem, como instituição responsável pela apuração e divulgação do preço do produto, a <b>EPAGRI – Empresa de Pesquisa Agropecuária e Extensão Rural de Santa Catarina</b>, por intermédio do seu Centro de Socioeconomia e Planejamento Agrícola (Epagri/Cepa), instituição pública estadual de reconhecida idoneidade, que realiza levantamento de preços agrícolas em praças do Estado de Santa Catarina, com atualização diária e divulgação pública e gratuita no endereço eletrônico cepa.epagri.sc.gov.br, atendendo ao disposto no art. 4º-A, incisos I e II, da Lei nº 8.929/1994.</p>
+  <p class="cl">2.2. <b>Praça de formação do preço</b>: praça Extremo Oeste Catarinense, integrante do levantamento de preços agrícolas da Epagri/Cepa.</p>
+  <p class="cl">2.3. <b>Índice de preço adotado</b>: valor mais comum recebido pelos produtores rurais pela saca de 60 kg de ${produto} em grão, levantado e divulgado pela Epagri/Cepa para a praça indicada no item 2.2.</p>
+  <p class="cl">2.4. <b>Preço de referência na emissão e data de apuração</b>: o preço de referência e a respectiva data de apuração são os indicados no item 11 do Quadro-Resumo, resultando no valor referencial de emissão indicado no item 12, informação lançada nesta Cédula para os fins do art. 2º, § 6º, da Resolução CMN nº 4.870/2020.</p>
+  <p class="cl">2.5. <b>Critério de obtenção do valor de liquidação</b> (art. 3º, X, da Lei nº 8.929/1994): o valor de liquidação desta Cédula corresponde ao montante final devido indicado no item 16 do Quadro-Resumo, obtido pela multiplicação da quantidade referenciada (item 6) pelo preço de referência acordado (item 11), não havendo acréscimo de juros remuneratórios, fixados em 0,00% na forma da Cláusula Quarta. O preço fica fixado na emissão, de forma que as oscilações posteriores da cotação, para mais ou para menos, não alteram o montante devido no vencimento.</p>
+
+  <div class="cl-h">CLÁUSULA TERCEIRA – DO DESEMBOLSO DO RECURSO</div>
+  <p class="cl">3.1. <b>Valor líquido a desembolsar</b>: a <b>CREDORA</b> disponibilizará ${E.art==='os'?'aos':(E.fem?'à':'ao')} <b>${EM}</b> a quantia líquida indicada no item 13 do Quadro-Resumo, livre de quaisquer deduções, em parcela única, até a data indicada no item 14.</p>
+  <p class="cl">3.2. <b>Forma de desembolso</b>: o crédito será realizado na conta movimento junto à <b>CREDORA</b>, de titularidade ${E.de} <b>${EM}</b>, valendo o respectivo aviso de crédito como comprovante e prova plena do desembolso, independentemente de recibo em apartado.</p>
+  <p class="cl">3.3. <b>Condições do desembolso</b>: o desembolso fica condicionado, cumulativamente, (i) à assinatura desta Cédula por todos os signatários e testemunhas; (ii) à entrega, ${E.de} <b>${EM}</b>, da matrícula atualizada do imóvel, do recibo de inscrição no CAR e dos demais documentos exigidos pela <b>CREDORA</b>; e (iii) à adoção das providências necessárias ao registro do título e à averbação da garantia, na forma da Cláusula Sétima.</p>
+  <p class="cl">3.4. <b>Destinação dos recursos</b>: os recursos desembolsados serão utilizados exclusivamente no custeio da lavoura de ${produto} da safra ${fv('safra','safra')}, notadamente na aquisição de insumos agropecuários, vedada a sua utilização para refinanciamento de dívidas ${E.de} <b>${EM}</b> perante a <b>CREDORA</b>, fornecedores ou terceiros.</p>
+
+  <div class="cl-h">CLÁUSULA QUARTA – DOS JUROS REMUNERATÓRIOS E DO MONTANTE FINAL DEVIDO</div>
+  <p class="cl">4.1. <b>Juros remuneratórios</b>: sobre o valor líquido desembolsado incidirão juros remuneratórios à taxa fixa indicada no item 15 do Quadro-Resumo (0,00%), de modo que o montante final devido corresponde integralmente ao valor líquido desembolsado, sem acréscimo de juros.</p>
+  <p class="cl">4.2. <b>Composição do montante final devido</b>: o montante final devido no vencimento, indicado no item 16 do Quadro-Resumo, é composto exclusivamente pelo valor líquido desembolsado (item 13), sendo os juros remuneratórios e demais encargos iguais a R$ 0,00, na forma do item 15.</p>
+  <p class="cl">4.3. <b>Custo efetivo total</b>: o custo efetivo total da operação, considerados todos os encargos previstos nesta Cédula, corresponde a 0,00% ao ano.</p>
+  <p class="cl">4.4. <b>Transparência das condições financeiras</b>: ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> ${E.declara} que ${E.recebe} previamente à assinatura, e ${E.plural?'compreenderam':'compreendeu'} integralmente, o demonstrativo de cálculo do valor líquido a desembolsar e do montante final devido, bem como os critérios de precificação previstos na Cláusula Segunda.</p>
+
+  <div class="cl-h">CLÁUSULA QUINTA – DO VENCIMENTO E DA LIQUIDAÇÃO FINANCEIRA</div>
+  <p class="cl">5.1. O vencimento desta Cédula fica fixado para a data indicada no item 17 do Quadro-Resumo, em que o montante apurado nos termos das Cláusulas Segunda e Quarta deverá ser pago integralmente ${E.de} <b>${EM}</b> à <b>CREDORA</b>, em moeda corrente nacional, mediante crédito na conta corrente nº 18.200-1, Agência 4072-X, do Banco do Brasil S.A., ou por transferência via PIX para a chave 83.731.927/0001-29, de titularidade da <b>CREDORA</b>.</p>
+  <p class="cl">5.2. O pagamento independe de aviso, notificação ou interpelação, constituindo-se em mora ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> de pleno direito a partir do dia seguinte ao vencimento, nos termos do art. 3º, II, da Lei nº 8.929/1994 e do art. 397 do Código Civil.</p>
+  <p class="cl">5.3. A <b>CREDORA</b> poderá, a seu exclusivo critério, aceitar a liquidação ou a amortização, total ou parcial, do montante devido em antecipação ao vencimento.</p>
+  <p class="cl">5.4. Os pagamentos parciais serão imputados, sucessivamente, nas despesas de cobrança, nos encargos moratórios e, por último, no principal, na forma do art. 354 do Código Civil.</p>
+  <p class="cl">5.5. A obrigação de pagamento subsiste ainda que ocorra frustração total ou parcial da safra, ${E.plural?'assumindo os':'assumindo '+(E.fem?'a':'o')} <b>${EM}</b> expressamente, na forma do art. 393 do Código Civil, os riscos decorrentes de caso fortuito e de força maior.</p>
+  <p class="cl">5.6. Liquidada integralmente a obrigação, a <b>CREDORA</b> promoverá, no prazo de 10 (dez) dias úteis, a informação da liquidação à entidade registradora e as providências necessárias ao cancelamento da garantia perante o Registro de Imóveis.</p>
+
+  <div class="cl-h">CLÁUSULA SEXTA – DO VENCIMENTO ANTECIPADO</div>
+  <p class="cl">6.1. A <b>CREDORA</b> poderá declarar esta Cédula vencida antecipadamente, independentemente de aviso extrajudicial, interpelação judicial ou notificação prévia, nas seguintes hipóteses: a) inadimplemento, ${E.de} <b>${EM}</b>, de qualquer obrigação prevista nesta Cédula; b) alienação, promessa de alienação ou constituição de ônus reais sobre os bens dados em garantia, sem a anuência prévia e expressa da CREDORA; c) declaração judicial de insolvência civil, pedido de falência ou de recuperação judicial ou extrajudicial ${E.de} <b>${EM}</b>; d) falecimento, incapacidade total ou pedido de interdição de qualquer ${E.de} <b>${EM}</b>; e) protesto de título ou descumprimento de decisão judicial transitada em julgado; f) inadimplemento ou vencimento antecipado de qualquer outra obrigação financeira ${E.de} <b>${EM}</b>; g) cancelamento ou suspensão de autorizações e licenças ambientais essenciais à atividade; h) alteração da atividade de modo que deixe de atuar como produtor rural; i) prática de ato tendente a anular, revisar ou repudiar esta Cédula; j) falsidade ou inexatidão das declarações prestadas na Cláusula Oitava; k) desvio da destinação dos recursos prevista no item 3.4; l) descumprimento das obrigações de registro e averbação previstas na Cláusula Sétima.</p>
+
+  <div class="cl-h">CLÁUSULA SÉTIMA – DA GARANTIA CEDULARMENTE CONSTITUÍDA E DA IDENTIFICAÇÃO DO IMÓVEL</div>
+  <p class="cl">7.1. Nos termos do art. 5º da Lei nº 8.929/1994, dos arts. 1.438 e 1.442, II e III, do Código Civil e do art. 6º, I e II, da Lei nº 492/1937, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> ${E.constitui} em favor da <b>CREDORA</b> <b>penhor agrícola de primeiro grau</b> sobre a lavoura e a produção de ${produto} descritas na Cláusula Primeira, pendentes ou em formação, cultivadas na área identificada no item 1.2, como garantia do integral cumprimento da obrigação assumida.</p>
+  <p class="cl">7.2. <b>Identificação do imóvel</b>: imóvel rural ${A?'objeto do arrendamento indicado no item 1.2':`de propriedade ${E.de} próprio${E.plural?'s':''} <b>${EM}</b>`}, matriculado sob o nº ${fv('matricula','matrícula')} no Cartório de Registro de Imóveis da Comarca de ${fv('comarca_ri','Comarca')}, situado no Município de ${fv('mun_imovel','Município')}, com área total de ${fv('area_total','ha')} hectares, inscrito no CAR sob o nº ${fv('car','CAR')} e no Cadastro de Imóveis Rurais (CCIR/Incra) sob o nº ${fv('ccir','CCIR')}, cuja área cultivada vinculada a esta Cédula é de ${fv('area_cult','ha')} hectares.</p>
+  <p class="cl">7.3. O produto empenhado permanecerá em poder ${E.de} <b>${EM}</b>, que ${E.assume} a condição de fiel${E.plural?'is':''} depositário${E.plural?'s':''}, sem qualquer remuneração, respondendo pela guarda e conservação dos bens na forma dos arts. 627 a 646 do Código Civil e do art. 7º, § 1º, da Lei nº 8.929/1994.</p>
+  <p class="cl">7.4. É expressamente vedada a constituição de qualquer novo ônus ou garantia sobre a lavoura e a produção empenhadas, bem como a emissão de outra Cédula de Produto Rural referenciada à mesma safra e área, sem prévia anuência da <b>CREDORA</b>, sob pena de vencimento antecipado.</p>
+  <p class="cl">7.5. Verificada diminuição ou depreciação da garantia constituída, a <b>CREDORA</b> comunicará o fato ${E.de} <b>${EM}</b>, por escrito, que ${E.plural?'deverão':'deverá'} reforçá-la no prazo de 10 (dez) dias, sob pena de vencimento antecipado.</p>
+  <p class="cl">7.6. ${E.artU} <b>${EM}</b> ${E.obriga} a manter a lavoura e o produto empenhados cobertos por seguro agrícola ou instrumento equivalente, indicando a <b>CREDORA</b> como beneficiária da indenização até o limite do seu crédito.</p>
+  <p class="cl">7.7. Os bens vinculados a esta Cédula não serão penhorados ou sequestrados por outras dívidas ${E.de} <b>${EM}</b>, cumprindo denunciar a existência desta Cédula às autoridades incumbidas da diligência, nos termos do art. 18 da Lei nº 8.929/1994.</p>
+  <p class="cl">7.8. Sem prejuízo do registro previsto no item 21 do Quadro-Resumo, o penhor agrícola constituído nesta Cláusula será levado a registro no Cartório de Registro de Imóveis da circunscrição em que localizado o imóvel indicado no item 7.2, na forma do art. 12, §§ 1º e 2º, da Lei nº 8.929/1994, no prazo de 3 (três) dias úteis. Para os fins do registro, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b>${emAnu} ${E.plural||A?'obrigam-se':'obriga-se'} a fornecer, às suas expensas, todos os documentos exigidos pelo Oficial de Registro de Imóveis.</p>
+
+  <div class="cl-h">CLÁUSULA OITAVA – DAS DECLARAÇÕES ${E.plural?'DOS EMITENTES':'DO EMITENTE'}</div>
+  <p class="cl">8.1. ${E.artU} <b>${EM}</b> ${E.declara}, sob as penas da lei: a) que ${E.possui} legitimação para a emissão desta Cédula, na forma do art. 2º, I, da Lei nº 8.929/1994; b) que são verdadeiras e exatas todas as informações relativas à qualificação, área cultivada, safra, quantidade e qualidade do produto e aos bens oferecidos em garantia, ciente de que declaração falsa caracteriza crime, nos termos do art. 17 da Lei nº 8.929/1994; c) que a lavoura e a produção empenhadas estão livres de ônus e não foram vinculadas a outra CPR, contrato de compra e venda futura ou operação de barter referente à mesma safra e área; d) que não se ${E.plural?'encontram':'encontra'} em insolvência, recuperação judicial ou extrajudicial; e) que o imóvel indicado no item 7.2 possui inscrição regular no CAR e que a atividade observa a legislação ambiental e trabalhista, sem trabalho em condições análogas às de escravo ou infantil; f) que a lavoura e a produção dadas em garantia não são essenciais ao exercício da atividade, para os fins do art. 5º, § 1º, da Lei nº 8.929/1994; g) que ${E.recebe} e ${E.plural?'compreenderam':'compreendeu'} as condições financeiras da operação; h) que ${E.esta} ciente de que o instrumento foi ajustado em caráter irrevogável e irretratável.</p>
+
+  <div class="cl-h">CLÁUSULA NONA – DA FISCALIZAÇÃO</div>
+  <p class="cl">9.1. A <b>CREDORA</b>, por intermédio de pessoa por ela indicada, poderá, sempre que julgar conveniente, vistoriar a lavoura e o produto dados em penhor, bem como verificar a regular aplicação dos recursos, sem que possa ser obstada ${E.de} <b>${EM}</b>${emAnu} ou por terceiros, obrigando-se ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b>${emAnu} a franquear o acesso à área e a apresentar os documentos solicitados.</p>
+
+  <div class="cl-h">CLÁUSULA DÉCIMA – DOS TRIBUTOS E DESPESAS</div>
+  <p class="cl">10.1. Os tributos incidentes em decorrência desta Cédula, quando devidos, serão pagos pelo respectivo contribuinte.</p>
+  <p class="cl">10.2. Todas as despesas com registro, depósito, averbação, formalização, cobrança, honorários advocatícios e custas judiciais e extrajudiciais decorrentes desta Cédula serão suportadas exclusivamente ${E.de} <b>${EM}</b>.</p>
+
+  <div class="cl-h">CLÁUSULA DÉCIMA PRIMEIRA – DOS ENCARGOS MORATÓRIOS</div>
+  <p class="cl">11.1. Não realizado o pagamento na forma da Cláusula Quinta, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> ${E.plural?'incorrerão':'incorrerá'} nos encargos moratórios indicados no item 20 do Quadro-Resumo: (i) juros de mora de 1% ao mês; (ii) correção monetária pela variação positiva do INPC; e (iii) multa não compensatória de 2% (dois por cento), calculados sobre a obrigação inadimplida, desde o vencimento original até a liquidação final.</p>
+
+  <div class="cl-h">CLÁUSULA DÉCIMA SEGUNDA – DAS DISPOSIÇÕES GERAIS</div>
+  <p class="cl">12.1. Esta Cédula constitui título executivo extrajudicial, líquido, certo e exigível, nos termos do art. 4º e do art. 4º-A, §§ 1º e 2º, da Lei nº 8.929/1994 e do art. 784, III, do Código de Processo Civil.</p>
+  <p class="cl">12.2. Esta Cédula é emitida à ordem da <b>CREDORA</b>, transmissível por endosso completo, na forma do art. 3º, III, e do art. 10 da Lei nº 8.929/1994.</p>
+  <p class="cl">12.3. Esta Cédula poderá ser aditada por termo aditivo que a integre, datado e assinado ${E.de} <b>${EM}</b>, ${(E.plural||A)?'pelos garantidores':'pelo garantidor'} e pela CREDORA, com a mesma formalização e registro do título original, na forma do art. 3º, § 5º, da Lei nº 8.929/1994.</p>
+  <p class="cl">12.4. Fica a <b>CREDORA</b> autorizada, mediante mandato irrevogável, na forma do art. 684 do Código Civil, a promover o registro, aditamento, retificação, atualização e baixa do título perante a entidade registradora.</p>
+  <p class="cl">12.5. As partes admitem a assinatura eletrônica desta Cédula, nos termos do art. 3º, § 4º, da Lei nº 8.929/1994 e da Lei nº 14.063/2020.</p>
+  <p class="cl">12.6. As comunicações entre as partes serão consideradas válidas quando remetidas aos endereços indicados no preâmbulo.</p>
+  <p class="cl">12.7. A tolerância quanto ao descumprimento de qualquer obrigação não implica novação, renúncia ou alteração das condições pactuadas.</p>
+  <p class="cl">12.8. A eventual nulidade de qualquer cláusula não afetará as demais disposições.</p>
+  <p class="cl">12.9. As partes elegem o Foro da Comarca de Cunha Porã/SC, com renúncia a qualquer outro.</p>
+
+  <p class="cl">E, por estarem justas e contratadas, as partes assinam esta Cédula, em 3 (três) vias de igual teor e forma.</p>
+  <p class="cl" style="text-align:right;margin-top:20px">Cunha Porã/SC, ${emissaoSpan()} de ${anoTxt()}.</p>
+  `;
+
+  // assinaturas
+  d+=blocoAssinaturas();
+
+  document.getElementById('doc').innerHTML=destacarTermos(d);
+}
+
+/* ===================== NAVEGAÇÃO ===================== */
+function iniciar(){
+  document.getElementById('config').classList.add('hidden');
+  document.getElementById('editor').classList.remove('hidden');
+  document.getElementById('btnBack').classList.remove('hidden');
+  document.getElementById('btnPdf').classList.remove('hidden');
+  let b='<span class="lbl">Configuração:</span>';
+  ['tipo','cultura','safra_tipo','ecivil','sexo','anuente','an_ecivil','an_sexo'].forEach(k=>{if(cfg[k])b+=`<span class="chip">${LABELS[k][cfg[k]]}</span>`;});
+  document.getElementById('banner').innerHTML=b;
+  buildFields(); calc(); render(); window.scrollTo(0,0);
+}
+function voltarConfig(){
+  document.getElementById('editor').classList.add('hidden');
+  document.getElementById('config').classList.remove('hidden');
+  document.getElementById('btnBack').classList.add('hidden');
+  document.getElementById('btnPdf').classList.add('hidden');
+  window.scrollTo(0,0);
+}
+
+/* Nome-base do documento no formato "CPR Número-Ano-Filial" (ou "CPR"). */
+function baseNomeCPR(){
+  const num=gv('num'), filial=gv('filial');
+  const de=(document.getElementById('data_emissao')?.value||''); const ano=/^\d{4}-/.test(de)?de.slice(0,4):'';
+  const tipo = cfg.tipo ? (LABELS.tipo[cfg.tipo]||'').toUpperCase() : '';   // FÍSICA / FINANCEIRA
+  const codigo = [num||null, ano||null, filial||null].filter(Boolean).join('-');  // 25-2026-10
+  let base = 'CPR' + (tipo?(' '+tipo):'') + (codigo?(' '+codigo):'');
+  const nome = gv('nome1').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,' ').trim().toUpperCase();  // sem caracteres inválidos p/ arquivo
+  if(nome) base += ' - '+nome;
+  return base;
+}
+
+/* ===================== CARREGAR DADOS (reimportação) =====================
+   O PDF gerado guarda, de forma invisível, os dados preenchidos. "Carregar PDF"
+   reabre esse PDF e repõe tudo para edição (também aceita um arquivo .json antigo).
+   Nada é gravado em disco automaticamente; os dados vivem só na memória até
+   fechar/atualizar a página. Requer que o PDF tenha camada de texto (não imagem). */
+const MARCA_INI='CPRDATA1:', MARCA_FIM=':CPREND';
+function dadosAtuais(){ saveFormData(); return {_app:'cpr-auriverde', versao:1, config:{...cfg}, campos:{...formData}}; }
+function b64Encode(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64Decode(b64){ return decodeURIComponent(escape(atob(b64))); }
+function aplicarDados(dados){
+  if(!dados || typeof dados!=='object' || !dados.config) throw new Error('formato');
+  Object.assign(cfg, dados.config);
+  formData = dados.campos || {};
+  delete formData.preco_saca; delete formData.data_apuracao;   // preço segue a referência EPAGRI atual da cultura
+  aplicarConfigUI();
+  iniciar();   // vai direto para o editor com tudo preenchido
+}
+
+function importarDados(){ document.getElementById('fileInput').click(); }
+function aplicarConfigUI(){
+  ['tipo','cultura','safra_tipo','ecivil','sexo','anuente','an_ecivil','an_sexo'].forEach(name=>{
+    document.querySelectorAll(`input[name=${name}]`).forEach(r=>{ r.checked=(cfg[name]===r.value); });
+  });
+  document.getElementById('anuenteExtra').classList.toggle('hidden', cfg.anuente!=='sim');
+  document.getElementById('safraExtra').classList.toggle('hidden', cfg.cultura!=='soja');
+  chips(); validate();
+}
+
+/* Lê o PDF gerado por este app e extrai o bloco de dados invisível. */
+async function importarPDF(file){
+  if(typeof pdfjsLib==='undefined') throw new Error('pdflib');
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+  let texto='';
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const tc=await page.getTextContent();
+    texto+=tc.items.map(it=>it.str).join('\n');
+  }
+  texto=texto.replace(/\s+/g,'');
+  const i1=texto.indexOf(MARCA_INI), i2=(i1>=0)?texto.indexOf(MARCA_FIM,i1+MARCA_INI.length):-1;
+  if(i1<0||i2<0) throw new Error('nodata');
+  const b64=texto.slice(i1+MARCA_INI.length,i2).replace(/[^A-Za-z0-9+/=]/g,'');   // mantém só caracteres base64
+  return JSON.parse(b64Decode(b64));
+}
+
+document.getElementById('fileInput').addEventListener('change',function(e){
+  const f=e.target.files[0]; if(!f) return;
+  const ehPDF = /\.pdf$/i.test(f.name) || f.type==='application/pdf';
+  const limpar=()=>{ e.target.value=''; };
+  if(ehPDF){
+    importarPDF(f).then(aplicarDados).catch(err=>{
+      if(err.message==='pdflib') alert('A leitura de PDF não está disponível (a biblioteca não carregou). Use o arquivo de dados (.json).');
+      else if(err.message==='nodata') alert('Este PDF não contém os dados para reedição. Ele precisa ter sido gerado por este app (versão atual). Alternativamente, carregue o arquivo de dados (.json).');
+      else alert('Não consegui ler este PDF. Tente novamente ou carregue o arquivo de dados (.json).');
+    }).finally(limpar);
+  } else {
+    const reader=new FileReader();
+    reader.onload=function(){
+      try{ aplicarDados(JSON.parse(reader.result)); }
+      catch(err){ alert('Arquivo inválido. Selecione um PDF gerado por este app ou um arquivo de dados (.json).'); }
+      limpar();
+    };
+    reader.readAsText(f);
+  }
+});
+
+/* Insere/remove o bloco de dados invisível no documento (para embutir no PDF). */
+function embutirPayloadPDF(){
+  let el=document.getElementById('cprPayload');
+  if(!el){ el=document.createElement('div'); el.id='cprPayload'; document.getElementById('doc').appendChild(el); }
+  el.textContent=MARCA_INI+b64Encode(JSON.stringify(dadosAtuais()))+MARCA_FIM;
+}
+function removerPayloadPDF(){ const el=document.getElementById('cprPayload'); if(el) el.remove(); }
+
+/* Rótulo amigável de um campo (bloco + label associado), p/ diferenciar campos repetidos. */
+function rotuloCampo(el){
+  const lab=el.closest('.fld')?.querySelector('label.flab');
+  const nome=lab ? lab.textContent.replace(/\?\s*$/,'').trim() : el.id;
+  const leg=el.closest('fieldset')?.querySelector('legend');
+  return leg ? (leg.textContent.trim()+' — '+nome) : nome;
+}
+/* Todos os campos obrigatórios em branco, conforme a configuração atual do formulário.
+   Considera apenas os campos visíveis (renderizados) e ignora os calculados (readonly). */
+function camposFaltandoEls(){
+  const els=[];
+  document.querySelectorAll('#formFields input.f, #formFields select.f').forEach(el=>{
+    if(el.readOnly) return;                                                   // ignora calculados (valor, kg)
+    if(el.id==='an_data_arr') return;                                         // data do arrendamento é opcional
+    if(el.id==='regime_outro' && document.getElementById('regime')?.value!=='outro') return; // só quando "outro"
+    let vazio = !el.value.trim();
+    if(el.id==='qtde_sacas' || el.id==='preco_saca') vazio = isNaN(numPos(el.id)); // exige número positivo
+    if(vazio) els.push(el);
+  });
+  return els;
+}
+
+/* Gera o PDF: exige TODOS os campos preenchidos; embute os dados (invisíveis) e limpa o título na impressão.
+   O nome sugerido do PDF é "CPR <TIPO> <Número-Ano-Filial - Nome>".   */
+function gerarPDF(){
+  const faltam=camposFaltandoEls();
+  document.querySelectorAll('#formFields .f.erro').forEach(e=>e.classList.remove('erro'));
+  if(faltam.length){
+    faltam.forEach(e=>e.classList.add('erro'));
+    faltam[0].scrollIntoView({block:'center'}); try{faltam[0].focus({preventScroll:true});}catch(_){faltam[0].focus();}
+    alert('Preencha todos os campos obrigatórios antes de gerar o PDF ('+faltam.length+' em branco):\n\n• '+faltam.map(rotuloCampo).join('\n• '));
+    return;
+  }
+  embutirPayloadPDF();               // o PDF passa a carregar os dados para reimportação
+  const original = document.title;
+  document.title = baseNomeCPR();    // título vazio/limpo some do cabeçalho de impressão
+  window.addEventListener('afterprint', function restore(){
+    document.title = original;
+    removerPayloadPDF();
+    window.removeEventListener('afterprint', restore);
+  });
+  window.print();
+}
+</script>
+</body>
+</html>
