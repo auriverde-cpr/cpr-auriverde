@@ -220,10 +220,9 @@
 /* ===================== CONFIG STATE ===================== */
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
-/* VERSÃO DO APP — bumpe a cada publicação para saber o que está no ar */
-const APP_VERSION='1.2';
-const APP_DATA='22/08/2026';
-document.getElementById('appver').textContent='v'+APP_VERSION+' · '+APP_DATA;
+/* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
+const APP_VERSAO='v1.2 · 23/08/2026';
+document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
 const LABELS={
   tipo:{fisica:"Física",financeira:"Financeira"},cultura:{soja:"Soja",milho:"Milho",trigo:"Trigo"},
