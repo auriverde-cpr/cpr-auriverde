@@ -221,7 +221,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — bumpe a cada publicação para saber o que está no ar */
-const APP_VERSION='1.1';
+const APP_VERSION='1.2';
 const APP_DATA='22/08/2026';
 document.getElementById('appver').textContent='v'+APP_VERSION+' · '+APP_DATA;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
@@ -690,7 +690,7 @@ function render(){
     <tr><td class="lab">2. Número / emissão</td><td>Nº ${numCPR()}. Cunha Porã/SC, ${emissaoSpan()} de ${anoTxt()}.</td></tr>
     <tr><td class="lab">3. ${E.plural?'Emitentes':'Emitente'}</td><td>${gv('nome1')?`<span class="fillv">${esc(gv('nome1'))}</span>`:'<span class="emptyv">[nome]</span>'}${cfg.ecivil==='casado'?(gv('nome2')?` e <span class="fillv">${esc(gv('nome2'))}</span>`:' e <span class="emptyv">[cônjuge]</span>'):''}, ${E.plural?'qualificados':E.qualif} no preâmbulo.</td></tr>
     <tr><td class="lab">4. Credora</td><td>COOPERATIVA REGIONAL AURIVERDE, CNPJ nº 83.731.927/0001-29.</td></tr>
-    <tr><td class="lab">5. Produto rural</td><td>${produto[0].toUpperCase()+produto.slice(1)} em grão (industrial), a granel, safra ${fv('safra','safra')}, no padrão de qualidade descrito no item 1.3.</td></tr>
+    <tr><td class="lab">5. Produto rural</td><td><b>${produto.toUpperCase()}</b> em grão (industrial), a granel, safra ${fv('safra','safra')}, no padrão de qualidade descrito no item 1.3.</td></tr>
     <tr><td class="lab">6. Quantidade a entregar</td><td>${gv('qtde_kg')?`<span class="fillv lc">${esc(gv('qtde_kg'))}</span>`:'<span class="emptyv">[kg]</span>'}, equivalentes a ${fv('qtde_sacas','sacas')} sacas de 60 kg.</td></tr>
     <tr><td class="lab">7. Local de produção</td><td>Imóvel rural matriculado sob o nº ${fv('matricula','matrícula')}, no RI da Comarca de ${fv('comarca_ri','Comarca')}, Município de ${fv('mun_imovel','Município')}. CAR nº ${fv('car','CAR')}.</td></tr>
     <tr><td class="lab">8. Área total / cultivada</td><td>Área total do imóvel: ${fv('area_total','ha')} ha. Área cultivada e vinculada a esta Cédula: ${fv('area_cult','ha')} ha.</td></tr>
@@ -835,7 +835,7 @@ function renderFinanceira(){
     <tr><td class="lab">2. Número / emissão</td><td>Nº ${numCPR()}. Cunha Porã/SC, ${emissaoSpan()} de ${anoTxt()}.</td></tr>
     <tr><td class="lab">3. ${E.plural?'Emitentes':'Emitente'}</td><td>${gv('nome1')?`<span class="fillv">${esc(gv('nome1'))}</span>`:'<span class="emptyv">[nome]</span>'}${cfg.ecivil==='casado'?(gv('nome2')?` e <span class="fillv">${esc(gv('nome2'))}</span>`:' e <span class="emptyv">[cônjuge]</span>'):''}, ${E.plural?'qualificados':E.qualif} no preâmbulo.</td></tr>
     <tr><td class="lab">4. Credora</td><td>COOPERATIVA REGIONAL AURIVERDE, CNPJ nº 83.731.927/0001-29.</td></tr>
-    <tr><td class="lab">5. Produto rural</td><td>${produto[0].toUpperCase()+produto.slice(1)} em grão, a granel, safra ${fv('safra','safra')}, no padrão de qualidade descrito no item 1.3.</td></tr>
+    <tr><td class="lab">5. Produto rural</td><td><b>${produto.toUpperCase()}</b> em grão, a granel, safra ${fv('safra','safra')}, no padrão de qualidade descrito no item 1.3.</td></tr>
     <tr><td class="lab">6. Quantidade referenciada</td><td>${gv('qtde_kg')?`<span class="fillv lc">${esc(gv('qtde_kg'))}</span>`:'<span class="emptyv">[kg]</span>'}, equivalentes a ${fv('qtde_sacas','sacas')} sacas de 60 kg.</td></tr>
     <tr><td class="lab">7. Local de produção</td><td>Imóvel rural matriculado sob o nº ${fv('matricula','matrícula')}, no RI da Comarca de ${fv('comarca_ri','Comarca')}, Município de ${fv('mun_imovel','Município')}. CAR nº ${fv('car','CAR')}.</td></tr>
     <tr><td class="lab">8. Área total / cultivada</td><td>Área total do imóvel: ${fv('area_total','ha')} ha. Área cultivada e vinculada a esta Cédula: ${fv('area_cult','ha')} ha.</td></tr>
