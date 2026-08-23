@@ -1,0 +1,47 @@
+name: Atualizar preço EPAGRI
+
+# Atualiza precos.json com o último preço de Soja, Milho e Trigo (praça Extremo
+# Oeste) divulgado pela EPAGRI/Cepa. O GitHub Pages republica sozinho após o commit.
+
+on:
+  schedule:
+    # 21:00 UTC = 18:00 (horário de Brasília), de segunda a sexta.
+    - cron: '0 21 * * 1-5'
+  workflow_dispatch: {}   # permite rodar manualmente pela aba "Actions"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: atualizar-precos
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+
+      - name: Gerar precos.json
+        run: node scripts/atualizar-precos.mjs
+
+      - name: Commit se houver mudança
+        run: |
+          if git diff --quiet -- precos.json; then
+            echo "Sem alteração no preço; nada a commitar."
+          else
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add precos.json
+            git commit -m "chore: atualiza preco EPAGRI ($(date -u +%Y-%m-%d))"
+            git push
+          fi
