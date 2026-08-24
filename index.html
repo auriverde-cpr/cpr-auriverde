@@ -221,7 +221,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v1.2 · 23/08/2026';
+const APP_VERSAO='v1.3 · 23/08/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
 const LABELS={
@@ -687,7 +687,7 @@ function render(){
   <table class="qr">
     <tr><td class="lab">1. Denominação</td><td>Cédula de Produto Rural (CPR), com liquidação <b>FÍSICA</b>, emitida na forma da Lei nº 8.929/1994.</td></tr>
     <tr><td class="lab">2. Número / emissão</td><td>Nº ${numCPR()}. Cunha Porã/SC, ${emissaoSpan()} de ${anoTxt()}.</td></tr>
-    <tr><td class="lab">3. ${E.plural?'Emitentes':'Emitente'}</td><td>${gv('nome1')?`<span class="fillv">${esc(gv('nome1'))}</span>`:'<span class="emptyv">[nome]</span>'}${cfg.ecivil==='casado'?(gv('nome2')?` e <span class="fillv">${esc(gv('nome2'))}</span>`:' e <span class="emptyv">[cônjuge]</span>'):''}, ${E.plural?'qualificados':E.qualif} no preâmbulo.</td></tr>
+    <tr><td class="lab">3. ${E.plural?'Emitentes':'Emitente'}</td><td>${gv('nome1')?`<span class="fillv">${esc(gv('nome1'))}</span>`:'<span class="emptyv">[nome]</span>'}, CPF nº ${fv('cpf1','CPF')}${cfg.ecivil==='casado'?((gv('nome2')?` e <span class="fillv">${esc(gv('nome2'))}</span>`:' e <span class="emptyv">[cônjuge]</span>')+', CPF nº '+fv('cpf2','CPF')):''}, ${E.plural?'qualificados':E.qualif} no preâmbulo.</td></tr>
     <tr><td class="lab">4. Credora</td><td>COOPERATIVA REGIONAL AURIVERDE, CNPJ nº 83.731.927/0001-29.</td></tr>
     <tr><td class="lab">5. Produto rural</td><td><b>${produto.toUpperCase()}</b> em grão (industrial), a granel, safra ${fv('safra','safra')}, no padrão de qualidade descrito no item 1.3.</td></tr>
     <tr><td class="lab">6. Quantidade a entregar</td><td>${gv('qtde_kg')?`<span class="fillv lc">${esc(gv('qtde_kg'))}</span>`:'<span class="emptyv">[kg]</span>'}, equivalentes a ${fv('qtde_sacas','sacas')} sacas de 60 kg.</td></tr>
@@ -777,8 +777,8 @@ function render(){
   <p class="cl">12.1. Esta Cédula constitui título executivo extrajudicial, líquido e certo quanto à quantidade e à qualidade do produto, nos termos do art. 4º da Lei nº 8.929/1994 e do art. 784, III e XII, do Código de Processo Civil, aparelhando execução para entrega de coisa incerta e, na hipótese de conversão, execução por quantia certa.</p>
   <p class="cl">12.2. Esta Cédula é emitida à ordem da <b>CREDORA</b>, transmissível por endosso completo, na forma do art. 3º, III, e do art. 10 da Lei nº 8.929/1994.</p>
   <p class="cl">12.3. Esta Cédula poderá ser aditada por termo aditivo que a integre, datado e assinado ${E.de} <b>${EM}</b>, ${(E.plural||A)?'pelos garantidores':'pelo garantidor'} e pela CREDORA, com a mesma formalização e registro do título original, na forma do art. 3º, § 5º, da Lei nº 8.929/1994.</p>
-  <p class="cl">12.4. Fica a <b>CREDORA</b> autorizada, mediante mandato irrevogável, na forma do art. 684 do Código Civil, a promover o registro, aditamento, retificação, atualização e baixa do título perante a entidade registradora.</p>
-  <p class="cl">12.5. As partes admitem a assinatura eletrônica desta Cédula, nos termos do art. 3º, § 4º, da Lei nº 8.929/1994 e da Lei nº 14.063/2020.</p>
+  <p class="cl">12.4. Fica a <b>CREDORA</b> autorizada, mediante mandato irrevogável, na forma do art. 684 do Código Civil, a promover o registro, aditamento, retificação, atualização e baixa do título perante a entidade registradora, facultado à CREDORA eleger e transferir o registro entre entidades autorizadas, independentemente de nova anuência.</p>
+  <p class="cl">12.5. As partes admitem a assinatura eletrônica desta Cédula, nos termos do art. 3º, § 4º, da Lei nº 8.929/1994 e da Lei nº 14.063/2020, documento de descrição das garantias, e assinatura eletrônica avançada ou qualificada nos atos de registro e averbação das garantias reais.</p>
   <p class="cl">12.6. As comunicações entre as partes serão consideradas válidas quando remetidas aos endereços indicados no preâmbulo.</p>
   <p class="cl">12.7. A tolerância quanto ao descumprimento de qualquer obrigação não implica novação, renúncia ou alteração das condições pactuadas.</p>
   <p class="cl">12.8. A eventual nulidade de qualquer cláusula não afetará as demais disposições.</p>
@@ -832,7 +832,7 @@ function renderFinanceira(){
   <table class="qr">
     <tr><td class="lab">1. Denominação</td><td>Cédula de Produto Rural com Liquidação <b>FINANCEIRA</b> (CPR Financeira), emitida na forma da Lei nº 8.929/1994.</td></tr>
     <tr><td class="lab">2. Número / emissão</td><td>Nº ${numCPR()}. Cunha Porã/SC, ${emissaoSpan()} de ${anoTxt()}.</td></tr>
-    <tr><td class="lab">3. ${E.plural?'Emitentes':'Emitente'}</td><td>${gv('nome1')?`<span class="fillv">${esc(gv('nome1'))}</span>`:'<span class="emptyv">[nome]</span>'}${cfg.ecivil==='casado'?(gv('nome2')?` e <span class="fillv">${esc(gv('nome2'))}</span>`:' e <span class="emptyv">[cônjuge]</span>'):''}, ${E.plural?'qualificados':E.qualif} no preâmbulo.</td></tr>
+    <tr><td class="lab">3. ${E.plural?'Emitentes':'Emitente'}</td><td>${gv('nome1')?`<span class="fillv">${esc(gv('nome1'))}</span>`:'<span class="emptyv">[nome]</span>'}, CPF nº ${fv('cpf1','CPF')}${cfg.ecivil==='casado'?((gv('nome2')?` e <span class="fillv">${esc(gv('nome2'))}</span>`:' e <span class="emptyv">[cônjuge]</span>')+', CPF nº '+fv('cpf2','CPF')):''}, ${E.plural?'qualificados':E.qualif} no preâmbulo.</td></tr>
     <tr><td class="lab">4. Credora</td><td>COOPERATIVA REGIONAL AURIVERDE, CNPJ nº 83.731.927/0001-29.</td></tr>
     <tr><td class="lab">5. Produto rural</td><td><b>${produto.toUpperCase()}</b> em grão, a granel, safra ${fv('safra','safra')}, no padrão de qualidade descrito no item 1.3.</td></tr>
     <tr><td class="lab">6. Quantidade referenciada</td><td>${gv('qtde_kg')?`<span class="fillv lc">${esc(gv('qtde_kg'))}</span>`:'<span class="emptyv">[kg]</span>'}, equivalentes a ${fv('qtde_sacas','sacas')} sacas de 60 kg.</td></tr>
@@ -925,8 +925,8 @@ function renderFinanceira(){
   <p class="cl">12.1. Esta Cédula constitui título executivo extrajudicial, líquido, certo e exigível, nos termos do art. 4º e do art. 4º-A, §§ 1º e 2º, da Lei nº 8.929/1994 e do art. 784, III, do Código de Processo Civil.</p>
   <p class="cl">12.2. Esta Cédula é emitida à ordem da <b>CREDORA</b>, transmissível por endosso completo, na forma do art. 3º, III, e do art. 10 da Lei nº 8.929/1994.</p>
   <p class="cl">12.3. Esta Cédula poderá ser aditada por termo aditivo que a integre, datado e assinado ${E.de} <b>${EM}</b>, ${(E.plural||A)?'pelos garantidores':'pelo garantidor'} e pela CREDORA, com a mesma formalização e registro do título original, na forma do art. 3º, § 5º, da Lei nº 8.929/1994.</p>
-  <p class="cl">12.4. Fica a <b>CREDORA</b> autorizada, mediante mandato irrevogável, na forma do art. 684 do Código Civil, a promover o registro, aditamento, retificação, atualização e baixa do título perante a entidade registradora.</p>
-  <p class="cl">12.5. As partes admitem a assinatura eletrônica desta Cédula, nos termos do art. 3º, § 4º, da Lei nº 8.929/1994 e da Lei nº 14.063/2020.</p>
+  <p class="cl">12.4. Fica a <b>CREDORA</b> autorizada, mediante mandato irrevogável, na forma do art. 684 do Código Civil, a promover o registro, aditamento, retificação, atualização e baixa do título perante a entidade registradora, facultado à CREDORA eleger e transferir o registro entre entidades autorizadas, independentemente de nova anuência.</p>
+  <p class="cl">12.5. As partes admitem a assinatura eletrônica desta Cédula, nos termos do art. 3º, § 4º, da Lei nº 8.929/1994 e da Lei nº 14.063/2020, documento de descrição das garantias, e assinatura eletrônica avançada ou qualificada nos atos de registro e averbação das garantias reais.</p>
   <p class="cl">12.6. As comunicações entre as partes serão consideradas válidas quando remetidas aos endereços indicados no preâmbulo.</p>
   <p class="cl">12.7. A tolerância quanto ao descumprimento de qualquer obrigação não implica novação, renúncia ou alteração das condições pactuadas.</p>
   <p class="cl">12.8. A eventual nulidade de qualquer cláusula não afetará as demais disposições.</p>
