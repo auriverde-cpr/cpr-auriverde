@@ -123,9 +123,17 @@
      'transparent' = alfa 0 (não aparece em nenhum visualizador); o texto continua extraível pelo leitor de PDF. */
   #doc #cprPayload{color:transparent !important;background:transparent;font-size:5px;line-height:8px;word-break:break-all;user-select:none;font-family:monospace}
   @media print{ #doc #cprPayload{color:transparent !important} }
+  /* Aviso flutuante enquanto busca o próximo número de CPR na planilha (consulta pode demorar alguns segundos). */
+  #numLoading{position:fixed;top:74px;left:50%;transform:translateX(-50%);background:#1c2a24;color:#fff;font-size:.9rem;
+    padding:12px 18px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.28);z-index:300;display:flex;align-items:center;gap:10px}
+  #numLoading .spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:numspin .8s linear infinite}
+  @keyframes numspin{to{transform:rotate(360deg)}}
+  .f.buscando{background:#fffbe6}
 </style>
 </head>
 <body>
+
+<div id="numLoading" class="hidden no-print"><span class="spin"></span><span>Buscando o próximo número de CPR… aguarde.</span></div>
 
 <div class="topbar no-print">
   <div class="brand">Gerador de CPR<small>Cooperativa Regional Auriverde</small></div>
@@ -350,7 +358,7 @@ function buildFields(){
   h+=`<fieldset><legend>Identificação</legend>
     <div class="grid3">
       <div class="fld"><label class="flab">Filial</label><input class="f" id="filial" placeholder="ex.: 10"></div>
-      <div class="fld"><label class="flab">Número da cédula</label><input class="f" id="num" placeholder="ex.: 11"></div>
+      <div class="fld"><label class="flab">Número da cédula</label><input class="f" id="num" placeholder=""></div>
       <div class="fld"><label class="flab">Data de emissão</label><input class="f" type="date" id="data_emissao" value="${hojeISO}"></div></div></fieldset>`;
 
   h+=`<fieldset><legend>${E.plural?'1º Emitente':'Emitente'}</legend>
@@ -471,12 +479,7 @@ function buildFields(){
   if(_tel) _tel.addEventListener('input',()=>{_tel.value=maskTel(_tel.value);});
   // Numeração por tipo+filial: ao informar a filial, sugere o próximo número (se o número estiver vazio).
   const _fil=document.getElementById('filial'), _numEl=document.getElementById('num');
-  if(_fil&&_numEl){ _fil.addEventListener('change',async ()=>{
-    if(!_numEl.value.trim() && gv('filial')){
-      const n=await sugerirProximo(cfg.tipo, gv('filial'));
-      if(n && !_numEl.value.trim()){ _numEl.value=n; _numEl.dispatchEvent(new Event('input',{bubbles:true})); }
-    }
-  }); }
+  if(_fil&&_numEl){ _fil.addEventListener('change',()=>{ preencherProximoNumero(); }); }
   // Prazo de entrega recalcula ao mudar a data de emissão, enquanto não for editado à mão.
   const _pz=document.getElementById('prazo_entrega'), _de=document.getElementById('data_emissao');
   if(_pz){ _pz.value=prazoEntregaPadrao(); _pz.dataset.auto=_pz.value;   // pré-preenche com o campo de data já no DOM
@@ -574,6 +577,22 @@ async function sugerirProximo(tipo,filial){
     }catch(e){}
   }
   return _proximoLocal(tipo,filial);
+}
+/* Preenche o campo Número com a próxima sugestão (tipo+filial), exibindo o aviso "aguarde" enquanto consulta. */
+async function preencherProximoNumero(){
+  const numEl=document.getElementById('num'); const filial=gv('filial');
+  if(!numEl || numEl.value.trim() || !filial) return;
+  const aviso=document.getElementById('numLoading');
+  if(aviso) aviso.classList.remove('hidden');
+  numEl.classList.add('buscando');
+  try{
+    const n=await sugerirProximo(cfg.tipo, filial);
+    if(n && !numEl.value.trim()){ numEl.value=n; numEl.dispatchEvent(new Event('input',{bubbles:true})); }
+  }catch(e){}
+  finally{
+    numEl.classList.remove('buscando');
+    if(aviso) aviso.classList.add('hidden');
+  }
 }
 /* Registra a emissão; devolve o número definitivo (a planilha ajusta em caso de colisão).
    reemissao=true: mantém o número informado e grava a linha marcada como "Reemissão". */
@@ -1056,14 +1075,8 @@ async function aplicarDados(dados){
   iniciar();                 // vai direto para o editor (iniciar reseta modoReemissao=false)
   modoReemissao=querReemitir;
 
-  // Nova CPR sem número: sugere o próximo da filial/tipo já no editor.
-  if(!modoReemissao && !gv('num') && gv('filial')){
-    try{
-      const n=await sugerirProximo(cfg.tipo, gv('filial'));
-      const el=document.getElementById('num');
-      if(n && el && !el.value.trim()){ el.value=n; el.dispatchEvent(new Event('input',{bubbles:true})); }
-    }catch(e){}
-  }
+  // Nova CPR sem número: sugere o próximo da filial/tipo já no editor (com o aviso "aguarde").
+  if(!modoReemissao) await preencherProximoNumero();
 }
 
 function importarDados(){ document.getElementById('fileInput').click(); }
