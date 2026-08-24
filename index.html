@@ -119,8 +119,10 @@
     #doc table.qr td,#doc table.qr td.lab{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   }
   .footnote{font-size:.75rem;color:var(--muted);text-align:center;padding:14px}
-  /* Bloco de dados embutido no PDF: invisível (branco, 1px), mas presente no texto do PDF para reimportação */
-  #doc #cprPayload{color:#fff;background:transparent;font-size:5px;line-height:8px;word-break:break-all;user-select:none;font-family:monospace}
+  /* Bloco de dados embutido no PDF: TEXTO INVISÍVEL (transparente), mas presente no texto do PDF para reimportação.
+     'transparent' = alfa 0 (não aparece em nenhum visualizador); o texto continua extraível pelo leitor de PDF. */
+  #doc #cprPayload{color:transparent !important;background:transparent;font-size:5px;line-height:8px;word-break:break-all;user-select:none;font-family:monospace}
+  @media print{ #doc #cprPayload{color:transparent !important} }
 </style>
 </head>
 <body>
@@ -195,7 +197,7 @@
       <button id="btnStart" class="btn btn-primary" disabled onclick="iniciar()">Continuar →</button>
     </div>
   </div>
-  <p class="footnote">Nada é salvo: tudo é processado no seu navegador e descartado ao fechar a página.</p>
+  <p class="footnote">Nenhum dado do formulário é salvo — tudo é processado no seu navegador e descartado ao fechar a página. (Apenas a numeração por filial fica guardada localmente, neste navegador, para sugerir o próximo número.)</p>
 </div>
 
 <!-- STEP 2 -->
@@ -221,7 +223,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v1.3 · 23/08/2026';
+const APP_VERSAO='v1.6 · 24/08/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
 const LABELS={
@@ -467,6 +469,14 @@ function buildFields(){
     if(el) el.addEventListener('input',()=>{el.value=maskCPF(el.value);});});
   const _tel=document.getElementById('telefone');
   if(_tel) _tel.addEventListener('input',()=>{_tel.value=maskTel(_tel.value);});
+  // Numeração por tipo+filial: ao informar a filial, sugere o próximo número (se o número estiver vazio).
+  const _fil=document.getElementById('filial'), _numEl=document.getElementById('num');
+  if(_fil&&_numEl){ _fil.addEventListener('change',async ()=>{
+    if(!_numEl.value.trim() && gv('filial')){
+      const n=await sugerirProximo(cfg.tipo, gv('filial'));
+      if(n && !_numEl.value.trim()){ _numEl.value=n; _numEl.dispatchEvent(new Event('input',{bubbles:true})); }
+    }
+  }); }
   // Prazo de entrega recalcula ao mudar a data de emissão, enquanto não for editado à mão.
   const _pz=document.getElementById('prazo_entrega'), _de=document.getElementById('data_emissao');
   if(_pz){ _pz.value=prazoEntregaPadrao(); _pz.dataset.auto=_pz.value;   // pré-preenche com o campo de data já no DOM
@@ -539,6 +549,45 @@ function maskTel(v){
 function anoTxt(){const dt=emissaoDate();return dt?`<span class="fillv">${dt.getFullYear()}</span>`:`<span class="emptyv">[ano]</span>`;}
 /* Numeração da CPR no formato Número/Ano/Filial (ex.: 11/2026/10) */
 function numCPR(){return `${fv('num','nº')}/${anoTxt()}/${fv('filial','filial')}`;}
+
+/* ===== Numeração das CPRs — por TIPO e FILIAL (sequências independentes) =====
+   NUMERACAO_URL vazio: sugestão LOCAL (por navegador).
+   Com a URL do web app (Google Apps Script): numeração COMPARTILHADA entre todos. */
+const NUMERACAO_URL = 'https://script.google.com/macros/s/AKfycbwuY6bHgwhHtyrPzCg4FxCEQDkni1hTVaf9CSO7m_eJevGnN29l-cGSEueodxz4xrwo/exec';   // web app do Apps Script — numeração COMPARTILHADA
+let modoReemissao=false;   // true = CPR importada para REEMISSÃO (mantém o mesmo número, não gera novo)
+
+function _chaveNum(tipo,filial){ return (tipo||'')+'|'+(filial||''); }
+function _numMap(){ try{ return JSON.parse(localStorage.getItem('cpr_numeracao')||'{}'); }catch(e){ return {}; } }
+function _proximoLocal(tipo,filial){ const last=parseInt(_numMap()[_chaveNum(tipo,filial)],10); return (isNaN(last)?0:last)+1; }
+function _registrarLocal(tipo,filial,num){
+  const n=parseInt(num,10); if(!filial||isNaN(n)) return;
+  const m=_numMap(); const k=_chaveNum(tipo,filial); const cur=parseInt(m[k],10);
+  if(isNaN(cur)||n>cur){ m[k]=n; try{ localStorage.setItem('cpr_numeracao',JSON.stringify(m)); }catch(e){} }
+}
+/* Sugere o próximo número (planilha se configurada; senão local). Assíncrono. */
+async function sugerirProximo(tipo,filial){
+  if(!filial) return null;
+  if(NUMERACAO_URL){
+    try{
+      const r=await fetch(NUMERACAO_URL+'?action=proximo&tipo='+encodeURIComponent(tipo||'')+'&filial='+encodeURIComponent(filial),{cache:'no-store'});
+      const j=await r.json(); if(j&&j.ok&&j.numero) return j.numero;
+    }catch(e){}
+  }
+  return _proximoLocal(tipo,filial);
+}
+/* Registra a emissão; devolve o número definitivo (a planilha ajusta em caso de colisão).
+   reemissao=true: mantém o número informado e grava a linha marcada como "Reemissão". */
+async function registrarEmissao(tipo,filial,num,emitente,cpf,ano,reemissao){
+  if(NUMERACAO_URL){
+    try{
+      const r=await fetch(NUMERACAO_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({action:'emitir',tipo,filial,numero:num,emitente,cpf,ano,reemissao:!!reemissao})});
+      const j=await r.json(); if(j&&j.ok&&j.numero) return {numero:String(j.numero),ajustado:!!j.ajustado};
+    }catch(e){}
+  }
+  _registrarLocal(tipo,filial,num);
+  return {numero:num,ajustado:false};
+}
 
 /* Datas: emissão (campo date) e pagamento automático = emissão + 30 dias */
 const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -944,6 +993,7 @@ function renderFinanceira(){
 
 /* ===================== NAVEGAÇÃO ===================== */
 function iniciar(){
+  modoReemissao=false;   // por padrão, toda emissão é nova (o import ajusta depois, se for reemissão)
   document.getElementById('config').classList.add('hidden');
   document.getElementById('editor').classList.remove('hidden');
   document.getElementById('btnBack').classList.remove('hidden');
@@ -982,13 +1032,38 @@ const MARCA_INI='CPRDATA1:', MARCA_FIM=':CPREND';
 function dadosAtuais(){ saveFormData(); return {_app:'cpr-auriverde', versao:1, config:{...cfg}, campos:{...formData}}; }
 function b64Encode(str){ return btoa(unescape(encodeURIComponent(str))); }
 function b64Decode(b64){ return decodeURIComponent(escape(atob(b64))); }
-function aplicarDados(dados){
+async function aplicarDados(dados){
   if(!dados || typeof dados!=='object' || !dados.config) throw new Error('formato');
   Object.assign(cfg, dados.config);
   formData = dados.campos || {};
   delete formData.preco_saca; delete formData.data_apuracao;   // preço segue a referência EPAGRI atual da cultura
+
+  // Documento importado com número: pergunta se é REEMISSÃO (mesmo número) ou NOVA CPR (número novo).
+  const numImportado=(formData.num||'').toString().trim();
+  let querReemitir=false;
+  if(numImportado){
+    querReemitir=confirm(
+      'Documento importado com o número '+numImportado+'.\n\n'+
+      'É uma REEMISSÃO/correção da MESMA CPR (mantém o número) '+
+      'ou uma NOVA CPR usando este como modelo (número novo)?\n\n'+
+      'OK  = REEMISSÃO — mantém o número '+numImportado+'\n'+
+      'Cancelar = NOVA CPR — gera um número novo'
+    );
+    if(!querReemitir) delete formData.num;   // nova CPR: limpa p/ receber o próximo número da filial/tipo
+  }
+
   aplicarConfigUI();
-  iniciar();   // vai direto para o editor com tudo preenchido
+  iniciar();                 // vai direto para o editor (iniciar reseta modoReemissao=false)
+  modoReemissao=querReemitir;
+
+  // Nova CPR sem número: sugere o próximo da filial/tipo já no editor.
+  if(!modoReemissao && !gv('num') && gv('filial')){
+    try{
+      const n=await sugerirProximo(cfg.tipo, gv('filial'));
+      const el=document.getElementById('num');
+      if(n && el && !el.value.trim()){ el.value=n; el.dispatchEvent(new Event('input',{bubbles:true})); }
+    }catch(e){}
+  }
 }
 
 function importarDados(){ document.getElementById('fileInput').click(); }
@@ -1032,9 +1107,10 @@ document.getElementById('fileInput').addEventListener('change',function(e){
   } else {
     const reader=new FileReader();
     reader.onload=function(){
-      try{ aplicarDados(JSON.parse(reader.result)); }
-      catch(err){ alert('Arquivo inválido. Selecione um PDF gerado por este app ou um arquivo de dados (.json).'); }
-      limpar();
+      let p; const erro=()=>alert('Arquivo inválido. Selecione um PDF gerado por este app ou um arquivo de dados (.json).');
+      try{ p=aplicarDados(JSON.parse(reader.result)); }
+      catch(err){ erro(); limpar(); return; }
+      Promise.resolve(p).catch(erro).finally(limpar);   // aplicarDados é assíncrona (pode perguntar reemissão)
     };
     reader.readAsText(f);
   }
@@ -1072,7 +1148,7 @@ function camposFaltandoEls(){
 
 /* Gera o PDF: exige TODOS os campos preenchidos; embute os dados (invisíveis) e limpa o título na impressão.
    O nome sugerido do PDF é "CPR <TIPO> <Número-Ano-Filial - Nome>".   */
-function gerarPDF(){
+async function gerarPDF(){
   const faltam=camposFaltandoEls();
   document.querySelectorAll('#formFields .f.erro').forEach(e=>e.classList.remove('erro'));
   if(faltam.length){
@@ -1081,6 +1157,15 @@ function gerarPDF(){
     alert('Preencha todos os campos obrigatórios antes de gerar o PDF ('+faltam.length+' em branco):\n\n• '+faltam.map(rotuloCampo).join('\n• '));
     return;
   }
+  // Numeração: registra a emissão na planilha (compartilhada, se configurada).
+  // Em REEMISSÃO mantém o mesmo número e grava a linha marcada como "Reemissão" (para controle).
+  try{
+    const res=await registrarEmissao(cfg.tipo, gv('filial'), gv('num'), gv('nome1'), gv('cpf1'), (document.getElementById('data_emissao')?.value||'').slice(0,4), modoReemissao);
+    if(res && res.numero && String(res.numero)!==gv('num')){
+      const numEl=document.getElementById('num'); numEl.value=res.numero; numEl.dispatchEvent(new Event('input',{bubbles:true}));
+      if(res.ajustado) alert('Numeração: o número foi ajustado para '+res.numero+' (o anterior já havia sido usado nesta filial/tipo).');
+    }
+  }catch(e){}
   embutirPayloadPDF();               // o PDF passa a carregar os dados para reimportação
   const original = document.title;
   document.title = baseNomeCPR();    // título vazio/limpo some do cabeçalho de impressão
