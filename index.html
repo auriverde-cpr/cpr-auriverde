@@ -129,11 +129,33 @@
   #numLoading .spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:numspin .8s linear infinite}
   @keyframes numspin{to{transform:rotate(360deg)}}
   .f.buscando{background:#fffbe6}
+  .btn-num{flex:0 0 auto;border:1px solid var(--line);background:var(--folha);color:#fff;border-radius:7px;padding:0 12px;font-size:1rem;cursor:pointer;line-height:1}
+  .btn-num:hover{background:var(--folha-d)}
+  /* Modal de confirmação de emissão (numeração só é registrada após confirmar) */
+  #emitModal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;display:flex;align-items:center;justify-content:center;padding:20px}
+  #emitModal .modal-card{background:var(--paper);border-radius:14px;max-width:460px;width:100%;padding:24px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+  #emitModal h3{margin:0 0 10px;color:var(--folha)}
+  #emitModal p{margin:0 0 18px;font-size:.92rem;line-height:1.5;color:var(--ink)}
+  #emitModal .modal-actions{display:flex;flex-direction:column;gap:10px}
+  #emitModal .btn{width:100%}
+  .btn-ghost2{background:#eee;color:#333}
+  .btn-ghost2:hover{background:#e0e0e0}
 </style>
 </head>
 <body>
 
 <div id="numLoading" class="hidden no-print"><span class="spin"></span><span>Buscando o próximo número de CPR… aguarde.</span></div>
+
+<div id="emitModal" class="hidden no-print">
+  <div class="modal-card">
+    <h3>Confirmar emissão</h3>
+    <p id="emitMsg"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" id="emitSim">Sim, emiti — registrar numeração</button>
+      <button type="button" class="btn btn-ghost2" id="emitNao">Não emiti — manter número livre</button>
+    </div>
+  </div>
+</div>
 
 <div class="topbar no-print">
   <div class="brand">Gerador de CPR<small>Cooperativa Regional Auriverde</small></div>
@@ -231,7 +253,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v1.6 · 24/08/2026';
+const APP_VERSAO='v1.7 · 24/08/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
 const LABELS={
@@ -291,6 +313,7 @@ document.querySelectorAll('input[type=radio]').forEach(r=>{
       // preço de referência acompanha a cultura: descarta o salvo p/ reaplicar a referência atual
       delete formData.preco_saca; delete formData.data_apuracao;
     }
+    if(r.name==='tipo'){ delete formData.num; }   // física e financeira têm numeração própria -> recarregar
     chips();validate();
   });
 });
@@ -358,7 +381,11 @@ function buildFields(){
   h+=`<fieldset><legend>Identificação</legend>
     <div class="grid3">
       <div class="fld"><label class="flab">Filial</label><input class="f" id="filial" placeholder="ex.: 10"></div>
-      <div class="fld"><label class="flab">Número da cédula</label><input class="f" id="num" placeholder=""></div>
+      <div class="fld"><label class="flab">Número da cédula</label>
+        <div style="display:flex;gap:6px;align-items:stretch">
+          <input class="f" id="num" placeholder="" style="flex:1">
+          <button type="button" id="btnNum" class="btn-num" title="Verificar / atualizar o próximo número desta filial e tipo" onclick="preencherProximoNumero(true)">↻</button>
+        </div></div>
       <div class="fld"><label class="flab">Data de emissão</label><input class="f" type="date" id="data_emissao" value="${hojeISO}"></div></div></fieldset>`;
 
   h+=`<fieldset><legend>${E.plural?'1º Emitente':'Emitente'}</legend>
@@ -425,7 +452,7 @@ function buildFields(){
 
   // Produto e imóvel
   h+=`<fieldset><legend>Produto e imóvel</legend>
-    <div class="grid2"><div class="fld"><label class="flab">Quantidade (sacas 60 kg)</label><input class="f" id="qtde_sacas" placeholder="ex.: 500" oninput="calc()"></div>
+    <div class="grid2"><div class="fld"><label class="flab">Quantidade (sacas 60 kg)</label><input class="f" id="qtde_sacas" placeholder="ex.: 500" oninput="baseCalc='sacas';calc()"></div>
     <div class="fld"><label class="flab">Equivalente em kg</label><input class="f calc" id="qtde_kg" readonly placeholder="calculado"></div></div>
     <div class="fld full"><label class="flab">Safra</label><input class="f" id="safra" value="2026/2027"></div>
     <div class="grid2"><div class="fld"><label class="flab">Matrícula do imóvel</label><input class="f" id="matricula" placeholder="nº"></div>
@@ -459,7 +486,7 @@ function buildFields(){
   h+=`<fieldset><legend>Precificação e valores</legend>
     <div class="grid2"><div class="fld"><label class="flab">Preço de referência (R$/saca)<a class="hint" href="https://cepa.epagri.sc.gov.br/index.php/mercado-agricola/" target="_blank" rel="noopener" data-tip="Preço pré-preenchido pela referência EPAGRI/Cepa — praça Extremo Oeste (valor mais comum da saca de 60 kg). Confira e ajuste se houver divulgação mais recente. Clique para abrir a página de preços (PREÇOS DIÁRIOS) em nova guia.">?</a></label><input class="f" id="preco_saca" value="${_ref.valor}" placeholder="ex.: 130,00" oninput="calc()"></div>
     <div class="fld"><label class="flab">Data de apuração</label><input class="f" id="data_apuracao" value="${_ref.data}" placeholder="ex.: 15/08/2026"></div></div>
-    <div class="grid2"><div class="fld"><label class="flab">${fisica?'Valor referencial / antecipação (R$)':'Valor líquido a desembolsar (R$)'}</label><input class="f calc" id="valor" readonly placeholder="calculado"></div>
+    <div class="grid2"><div class="fld"><label class="flab">${fisica?'Valor referencial / antecipação (R$)':'Valor líquido a desembolsar (R$)'}<span class="hint" tabindex="0" data-tip="Pode digitar o valor: a quantidade (sacas/kg) é recalculada automaticamente. Ou digite a quantidade e o valor é calculado. O preço de referência liga os dois.">?</span></label><input class="f" id="valor" placeholder="ex.: 100.000,00" oninput="baseCalc='valor';calc()"></div>
     ${fisica?'':`<div class="fld"><label class="flab">Data de vencimento<span class="hint" tabindex="0" data-tip="Data de Vencimento da Campanha / Prazo de Venda.">?</span></label><input class="f" type="date" id="vencimento"></div>`}
     </div>
   </fieldset>`;
@@ -471,15 +498,25 @@ function buildFields(){
     if(lab&&ctl&&ctl.id&&!lab.htmlFor) lab.htmlFor=ctl.id;
   });
   // Campos que ficam em minúscula (profissão e regime)
-  ['prof1','prof2','an_prof1','an_prof2','regime','qtde_kg'].forEach(id=>{const el=document.getElementById(id); if(el) el.classList.add('lc');});
+  ['prof1','prof2','an_prof1','an_prof2','regime','qtde_kg',
+   'num','filial','rg1','rg2','an_rg1','an_rg2','ie1','matricula','car','ccir','area_total','area_cult','preco_saca','valor','qtde_sacas'
+  ].forEach(id=>{const el=document.getElementById(id); if(el) el.classList.add('lc');});
   // Máscaras (rodam antes do render para o documento já receber o valor formatado)
   ['cpf1','cpf2','cpfger','an_cpf1','an_cpf2'].forEach(id=>{const el=document.getElementById(id);
     if(el) el.addEventListener('input',()=>{el.value=maskCPF(el.value);});});
   const _tel=document.getElementById('telefone');
   if(_tel) _tel.addEventListener('input',()=>{_tel.value=maskTel(_tel.value);});
-  // Numeração por tipo+filial: ao informar a filial, sugere o próximo número (se o número estiver vazio).
+  // Filial: valida contra a lista, preenche os dados do gerente (CREDORA) e recarrega o número (tipo+filial).
   const _fil=document.getElementById('filial'), _numEl=document.getElementById('num');
-  if(_fil&&_numEl){ _fil.addEventListener('change',()=>{ preencherProximoNumero(); }); }
+  if(_fil){
+    _fil.addEventListener('input',validarFilial);
+    _fil.addEventListener('change',()=>{
+      if(!validarFilial() || !gv('filial')) return;
+      if(!filialValida(gv('filial'))) return;
+      preencherGerente();
+      preencherProximoNumero(true);   // filial nova -> busca a numeração da nova filial
+    });
+  }
   // Prazo de entrega recalcula ao mudar a data de emissão, enquanto não for editado à mão.
   const _pz=document.getElementById('prazo_entrega'), _de=document.getElementById('data_emissao');
   if(_pz){ _pz.value=prazoEntregaPadrao(); _pz.dataset.auto=_pz.value;   // pré-preenche com o campo de data já no DOM
@@ -518,6 +555,15 @@ function fv(id,guia){const v=gv(id);return v?`<span class="fillv">${esc(v)}</spa
 /* fv em minúscula (profissão etc.) */
 function fvLc(id,guia){const v=gv(id);return v?`<span class="fillv lc">${esc(v)}</span>`:`<span class="emptyv">[${guia}]</span>`;}
 function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+/* Endereço do representante da CREDORA (gerente): sem "Rua" fixo (o logradouro já vem completo);
+   omite o número quando vazio e o bairro quando vazio. */
+function enderecoGerenteTxt(){
+  let s='residente e domiciliado na '+fv('end_rua','logradouro');
+  const num=gv('end_num'); if(num) s+=', nº '+esc(num);
+  const bairro=gv('end_bairro'); if(bairro) s+=', Bairro '+esc(bairro);
+  s+=', no Município de '+fv('end_municipio','Município/UF');
+  return s;
+}
 
 /* Regime de bens: se "outro" estiver selecionado, vale o que foi digitado */
 function toggleRegimeOutro(){
@@ -553,6 +599,37 @@ function anoTxt(){const dt=emissaoDate();return dt?`<span class="fillv">${dt.get
 /* Numeração da CPR no formato Número/Ano/Filial (ex.: 11/2026/10) */
 function numCPR(){return `${fv('num','nº')}/${anoTxt()}/${fv('filial','filial')}`;}
 
+/* ===== Dados dos gerentes por filial (planilha Dados_Gerentes) =====
+   Preenche automaticamente os dados da CREDORA a partir da filial informada.
+   Atualize este objeto quando a planilha Dados_Gerentes mudar. Filiais sem gerente ficam em branco. */
+const GERENTES = {
+  '1':  {nome:'LEANDRO DECOSTA',        cpf:'080.712.449-45', endereco:'Av. Sete de Setembro',                        numero:'1195', municipio:'Maravilha/SC'},
+  '73': {nome:'LEANDRO DECOSTA',        cpf:'080.712.449-45', endereco:'Av. Sete de Setembro',                        numero:'1195', municipio:'Maravilha/SC'},
+  '41': {nome:'DARLEI LUVIZA',          cpf:'047.925.519-94', endereco:'Rua Seis de Janeiro, Bairro Sabadin',          numero:'',     municipio:'Iraceminha/SC'},
+  '42': {nome:'DARLEI LUVIZA',          cpf:'047.925.519-94', endereco:'Rua Seis de Janeiro, Bairro Sabadin',          numero:'',     municipio:'Iraceminha/SC'},
+  '49': {nome:'ARLAN ANTUNES DE BRIDA', cpf:'041.681.249-08', endereco:'Estrada Geral, Rio Rocinha, Rocinha de Cima',  numero:'',     municipio:'Lauro Muller/SC'},
+  '71': {nome:'REIMAR CAVALLI',         cpf:'001.730.930-19', endereco:'Rua Hugo Kanitz, Bairro Ildo Meneghetti',      numero:'486',  municipio:'Três Passos/RS'}
+};
+/* Todas as filiais válidas (mesmo as que ainda não têm gerente cadastrado). */
+const FILIAIS = ['1','10','14','15','17','19','25','26','37','41','42','43','45','46','48','49','51','58','60','63','67','68','69','71','72','73','90'];
+function filialValida(f){ return FILIAIS.indexOf(String(f||'').trim())>=0; }
+/* Preenche os campos da CREDORA (gerente) a partir da filial, se houver cadastro. */
+function preencherGerente(){
+  const g=GERENTES[gv('filial')]; if(!g) return;
+  const set=(id,val)=>{ const el=document.getElementById(id); if(el) el.value=val||''; };
+  set('gerente',g.nome); set('cpfger',g.cpf);
+  set('end_rua',g.endereco); set('end_num',g.numero); set('end_bairro',''); set('end_municipio',g.municipio);
+  render();
+}
+/* Marca o campo Filial como inválido quando não corresponde a uma filial da lista. */
+function validarFilial(){
+  const el=document.getElementById('filial'); if(!el) return true;
+  const v=el.value.trim();
+  const ok = !v || filialValida(v);   // vazio não marca erro aqui (a obrigatoriedade é tratada no gerar)
+  el.classList.toggle('erro', !ok);
+  return ok;
+}
+
 /* ===== Numeração das CPRs — por TIPO e FILIAL (sequências independentes) =====
    NUMERACAO_URL vazio: sugestão LOCAL (por navegador).
    Com a URL do web app (Google Apps Script): numeração COMPARTILHADA entre todos. */
@@ -579,9 +656,11 @@ async function sugerirProximo(tipo,filial){
   return _proximoLocal(tipo,filial);
 }
 /* Preenche o campo Número com a próxima sugestão (tipo+filial), exibindo o aviso "aguarde" enquanto consulta. */
-async function preencherProximoNumero(){
+async function preencherProximoNumero(forcar){
   const numEl=document.getElementById('num'); const filial=gv('filial');
-  if(!numEl || numEl.value.trim() || !filial) return;
+  if(!numEl || !filial || !filialValida(filial)) return;
+  if(forcar) numEl.value='';                 // botão/atualizar filial: busca de novo mesmo que já tenha número
+  if(numEl.value.trim()) return;
   const aviso=document.getElementById('numLoading');
   if(aviso) aviso.classList.remove('hidden');
   numEl.classList.add('buscando');
@@ -596,11 +675,11 @@ async function preencherProximoNumero(){
 }
 /* Registra a emissão; devolve o número definitivo (a planilha ajusta em caso de colisão).
    reemissao=true: mantém o número informado e grava a linha marcada como "Reemissão". */
-async function registrarEmissao(tipo,filial,num,emitente,cpf,ano,reemissao){
+async function registrarEmissao(tipo,filial,num,emitente,ano,reemissao){
   if(NUMERACAO_URL){
     try{
       const r=await fetch(NUMERACAO_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-        body:JSON.stringify({action:'emitir',tipo,filial,numero:num,emitente,cpf,ano,reemissao:!!reemissao})});
+        body:JSON.stringify({action:'emitir',tipo,filial,numero:num,emitente,ano,reemissao:!!reemissao})});
       const j=await r.json(); if(j&&j.ok&&j.numero) return {numero:String(j.numero),ajustado:!!j.ajustado};
     }catch(e){}
   }
@@ -670,16 +749,41 @@ function numPos(id){
   const n=parseFloat(gv(id).replace(/\./g,'').replace(',','.'));
   return (!isNaN(n) && n>0) ? n : NaN;
 }
+/* Valor em R$ digitado (aceita "R$ 100.000,00", "100000", "100000,50"); NaN se inválido/≤0. */
+function parseMoeda(str){
+  const s=(str||'').replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',','.');
+  const n=parseFloat(s); return (!isNaN(n)&&n>0)?n:NaN;
+}
+/* baseCalc define quem é a origem do cálculo:
+   'sacas' -> valor = sacas × preço;  'valor' -> sacas = truncar(valor ÷ preço, 2 casas). */
+let baseCalc='sacas';
+function fmtSacas(n){ return n.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:2}); }
 function valorNumerico(){
-  const s=numPos('qtde_sacas'), p=numPos('preco_saca');
+  const p=numPos('preco_saca');
+  if(baseCalc==='valor') return parseMoeda(gv('valor'));
+  const s=numPos('qtde_sacas');
   return (!isNaN(s)&&!isNaN(p)) ? s*p : NaN;
 }
+function sacasNumerico(){
+  if(baseCalc==='valor'){
+    const v=parseMoeda(gv('valor')), p=numPos('preco_saca');
+    return (!isNaN(v)&&!isNaN(p)) ? Math.trunc((v/p)*100)/100 : NaN;   // trunca em 2 casas
+  }
+  return numPos('qtde_sacas');
+}
+function valorDisplay(){ const t=valorNumerico(); return (isNaN(t)||t>=1e12)?'':t.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 function valorExtensoAtual(){ const t=valorNumerico(); return (isNaN(t)||t>=1e12)?'':extensoReais(t); }
 function calc(){
-  const s=numPos('qtde_sacas');
-  document.getElementById('qtde_kg').value=isNaN(s)?'':(s*60).toLocaleString('pt-BR')+' kg';
-  const total=valorNumerico();
-  document.getElementById('valor').value=isNaN(total)?'':total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const sac=sacasNumerico();
+  document.getElementById('qtde_kg').value=isNaN(sac)?'':Math.round(sac*60).toLocaleString('pt-BR')+' kg';
+  if(baseCalc==='valor'){
+    // valor é a origem (digitado): recalcula as sacas; não sobrescreve o que o usuário digitou no valor.
+    const el=document.getElementById('qtde_sacas'); if(el) el.value=isNaN(sac)?'':fmtSacas(sac);
+  } else {
+    // sacas é a origem: recalcula o valor.
+    const total=valorNumerico();
+    const el=document.getElementById('valor'); if(el) el.value=isNaN(total)?'':total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
   render();
 }
 
@@ -720,7 +824,7 @@ function render(){
   const A=cfg.anuente==='sim'?flex(cfg.an_sexo,cfg.an_ecivil,'A'):null;
   const produto = cfg.cultura==='milho'?'milho':(cfg.cultura==='trigo'?'trigo':'soja');
   const prodFem = (cfg.cultura==='soja');   // soja = feminino; milho/trigo = masculino
-  const valorFull = (gv('valor')?`<span class="fillv">${esc(gv('valor'))}</span>`:`<span class="emptyv">[R$ 0,00]</span>`) +
+  const valorFull = (valorDisplay()?`<span class="fillv">${esc(valorDisplay())}</span>`:`<span class="emptyv">[R$ 0,00]</span>`) +
                     ' (' + (valorExtensoAtual()?`<span class="fillv lc">${esc(valorExtensoAtual())}</span>`:`<span class="emptyv">[por extenso]</span>`) + ')';
 
   // ---- preâmbulo emitentes ----
@@ -780,7 +884,7 @@ function render(){
 
   <p class="cl pg-break"><b>${E.plural?'EMITENTES':'EMITENTE'}:</b> ${emit}.</p>
 
-  <p class="cl"><b>CREDORA: COOPERATIVA REGIONAL AURIVERDE</b>, pessoa jurídica de direito privado, inscrita no CNPJ/MF sob o n.º 83.731.927/0001-29, com sede na Rua Moura Brasil, nº 791, no Município e Comarca de Cunha Porã/SC, CEP 89890-000, representada por seu Gerente de Filial, ${fv('gerente','nome do gerente')}, brasileiro, inscrito no CPF sob o nº ${fv('cpfger','CPF')}, residente e domiciliado na Rua ${fv('end_rua','rua')}, nº ${fv('end_num','nº')}, Bairro ${fv('end_bairro','bairro')}, no Município de ${fv('end_municipio','Município/UF')}.</p>
+  <p class="cl"><b>CREDORA: COOPERATIVA REGIONAL AURIVERDE</b>, pessoa jurídica de direito privado, inscrita no CNPJ/MF sob o n.º 83.731.927/0001-29, com sede na Rua Moura Brasil, nº 791, no Município e Comarca de Cunha Porã/SC, CEP 89890-000, representada por seu Gerente de Filial, ${fv('gerente','nome do gerente')}, brasileiro, inscrito no CPF sob o nº ${fv('cpfger','CPF')}, ${enderecoGerenteTxt()}.</p>
 
   <p class="cl">As partes acima qualificadas têm entre si justo e contratado a emissão da presente Cédula de Produto Rural com liquidação física, que se regerá pela Lei nº 8.929/1994, pela Resolução CMN nº 4.870/2020 e pelas cláusulas seguintes.</p>
 
@@ -868,7 +972,7 @@ function renderFinanceira(){
   const A=cfg.anuente==='sim'?flex(cfg.an_sexo,cfg.an_ecivil,'A'):null;
   const produto = cfg.cultura==='milho'?'milho':(cfg.cultura==='trigo'?'trigo':'soja');
   const prodFem = (cfg.cultura==='soja');   // soja = feminino; milho/trigo = masculino
-  const valorFull = (gv('valor')?`<span class="fillv">${esc(gv('valor'))}</span>`:`<span class="emptyv">[R$ 0,00]</span>`) +
+  const valorFull = (valorDisplay()?`<span class="fillv">${esc(valorDisplay())}</span>`:`<span class="emptyv">[R$ 0,00]</span>`) +
                     ' (' + (valorExtensoAtual()?`<span class="fillv lc">${esc(valorExtensoAtual())}</span>`:`<span class="emptyv">[por extenso]</span>`) + ')';
   const EM = E.plural?'EMITENTES':'EMITENTE';
   const emAnu = A ? ` e <b>${A.plural?'ANUENTES':'ANUENTE'}</b>` : '';
@@ -926,7 +1030,7 @@ function renderFinanceira(){
 
   <p class="cl pg-break"><b>${E.plural?'EMITENTES':'EMITENTE'}:</b> ${emit}.</p>
 
-  <p class="cl"><b>CREDORA: COOPERATIVA REGIONAL AURIVERDE</b>, pessoa jurídica de direito privado, inscrita no CNPJ/MF sob o n.º 83.731.927/0001-29, com sede na Rua Moura Brasil, nº 791, no Município e Comarca de Cunha Porã/SC, CEP 89890-000, representada por seu Gerente de Filial, ${fv('gerente','nome do gerente')}, brasileiro, inscrito no CPF sob o nº ${fv('cpfger','CPF')}, residente e domiciliado na Rua ${fv('end_rua','rua')}, nº ${fv('end_num','nº')}, Bairro ${fv('end_bairro','bairro')}, no Município de ${fv('end_municipio','Município/UF')}.</p>
+  <p class="cl"><b>CREDORA: COOPERATIVA REGIONAL AURIVERDE</b>, pessoa jurídica de direito privado, inscrita no CNPJ/MF sob o n.º 83.731.927/0001-29, com sede na Rua Moura Brasil, nº 791, no Município e Comarca de Cunha Porã/SC, CEP 89890-000, representada por seu Gerente de Filial, ${fv('gerente','nome do gerente')}, brasileiro, inscrito no CPF sob o nº ${fv('cpfger','CPF')}, ${enderecoGerenteTxt()}.</p>
 
   <p class="cl">As partes acima qualificadas têm entre si justo e contratado a emissão da presente Cédula de Produto Rural com Liquidação Financeira, que se regerá pela Lei nº 8.929/1994, pela Resolução CMN nº 4.870/2020 e pelas cláusulas seguintes.</p>
 
@@ -1013,6 +1117,7 @@ function renderFinanceira(){
 /* ===================== NAVEGAÇÃO ===================== */
 function iniciar(){
   modoReemissao=false;   // por padrão, toda emissão é nova (o import ajusta depois, se for reemissão)
+  baseCalc='sacas';      // origem do cálculo volta para a quantidade (valor = sacas × preço)
   document.getElementById('config').classList.add('hidden');
   document.getElementById('editor').classList.remove('hidden');
   document.getElementById('btnBack').classList.remove('hidden');
@@ -1021,6 +1126,9 @@ function iniciar(){
   ['tipo','cultura','safra_tipo','ecivil','sexo','anuente','an_ecivil','an_sexo'].forEach(k=>{if(cfg[k])b+=`<span class="chip">${LABELS[k][cfg[k]]}</span>`;});
   document.getElementById('banner').innerHTML=b;
   buildFields(); calc(); render(); window.scrollTo(0,0);
+  validarFilial();
+  if(filialValida(gv('filial'))) preencherGerente();
+  if(!modoReemissao) preencherProximoNumero();   // preenche o número (se vazio) da filial/tipo atuais
 }
 function voltarConfig(){
   document.getElementById('editor').classList.add('hidden');
@@ -1154,6 +1262,7 @@ function camposFaltandoEls(){
     if(el.id==='regime_outro' && document.getElementById('regime')?.value!=='outro') return; // só quando "outro"
     let vazio = !el.value.trim();
     if(el.id==='qtde_sacas' || el.id==='preco_saca') vazio = isNaN(numPos(el.id)); // exige número positivo
+    if(el.id==='valor') vazio = isNaN(parseMoeda(el.value));                        // valor R$ positivo
     if(vazio) els.push(el);
   });
   return els;
@@ -1161,6 +1270,21 @@ function camposFaltandoEls(){
 
 /* Gera o PDF: exige TODOS os campos preenchidos; embute os dados (invisíveis) e limpa o título na impressão.
    O nome sugerido do PDF é "CPR <TIPO> <Número-Ano-Filial - Nome>".   */
+/* Pergunta, após a impressão, se a CPR foi realmente emitida (salva). Só então a numeração é registrada.
+   Assim, fechar a janela de impressão sem salvar NÃO consome o número. Retorna Promise<boolean>. */
+function confirmarEmissaoModal(rotulo){
+  return new Promise(resolve=>{
+    const bg=document.getElementById('emitModal'), msg=document.getElementById('emitMsg');
+    const sim=document.getElementById('emitSim'), nao=document.getElementById('emitNao');
+    msg.innerHTML='Você <b>salvou/emitiu</b> a CPR <b>'+esc(rotulo)+'</b>?<br><br>'+
+      'Confirme para registrar a numeração no controle. Se fechou a janela sem salvar, escolha <b>“Não emiti”</b> — o número segue livre para reuso.';
+    bg.classList.remove('hidden');
+    const done=v=>{ bg.classList.add('hidden'); sim.removeEventListener('click',ok); nao.removeEventListener('click',no); resolve(v); };
+    const ok=()=>done(true), no=()=>done(false);
+    sim.addEventListener('click',ok); nao.addEventListener('click',no);
+  });
+}
+
 async function gerarPDF(){
   const faltam=camposFaltandoEls();
   document.querySelectorAll('#formFields .f.erro').forEach(e=>e.classList.remove('erro'));
@@ -1170,22 +1294,34 @@ async function gerarPDF(){
     alert('Preencha todos os campos obrigatórios antes de gerar o PDF ('+faltam.length+' em branco):\n\n• '+faltam.map(rotuloCampo).join('\n• '));
     return;
   }
-  // Numeração: registra a emissão na planilha (compartilhada, se configurada).
-  // Em REEMISSÃO mantém o mesmo número e grava a linha marcada como "Reemissão" (para controle).
-  try{
-    const res=await registrarEmissao(cfg.tipo, gv('filial'), gv('num'), gv('nome1'), gv('cpf1'), (document.getElementById('data_emissao')?.value||'').slice(0,4), modoReemissao);
-    if(res && res.numero && String(res.numero)!==gv('num')){
-      const numEl=document.getElementById('num'); numEl.value=res.numero; numEl.dispatchEvent(new Event('input',{bubbles:true}));
-      if(res.ajustado) alert('Numeração: o número foi ajustado para '+res.numero+' (o anterior já havia sido usado nesta filial/tipo).');
-    }
-  }catch(e){}
+  // Filial precisa existir na lista de filiais válidas.
+  if(!filialValida(gv('filial'))){
+    const el=document.getElementById('filial'); el.classList.add('erro');
+    el.scrollIntoView({block:'center'}); try{el.focus({preventScroll:true});}catch(_){}
+    alert('Filial inválida. Informe uma das filiais cadastradas na cooperativa.');
+    return;
+  }
+  const ano=(document.getElementById('data_emissao')?.value||'').slice(0,4);
+  const rotulo=(cfg.tipo==='fisica'?'FÍSICA':'FINANCEIRA')+' '+gv('num')+'/'+ano+'/'+gv('filial');
+
   embutirPayloadPDF();               // o PDF passa a carregar os dados para reimportação
   const original = document.title;
-  document.title = baseNomeCPR();    // título vazio/limpo some do cabeçalho de impressão
-  window.addEventListener('afterprint', function restore(){
+  document.title = baseNomeCPR();    // título limpo no cabeçalho de impressão
+
+  window.addEventListener('afterprint', async function restore(){
+    window.removeEventListener('afterprint', restore);
     document.title = original;
     removerPayloadPDF();
-    window.removeEventListener('afterprint', restore);
+    // Só agora (após a janela de impressão) confirmamos a emissão e registramos a numeração.
+    const emitiu = await confirmarEmissaoModal(rotulo);
+    if(!emitiu) return;              // fechou sem salvar -> número continua livre
+    try{
+      const res=await registrarEmissao(cfg.tipo, gv('filial'), gv('num'), gv('nome1'), ano, modoReemissao);
+      if(res && res.numero && String(res.numero)!==gv('num')){
+        const numEl=document.getElementById('num'); numEl.value=res.numero; numEl.dispatchEvent(new Event('input',{bubbles:true}));
+        if(res.ajustado) alert('Atenção: o número '+gv('num')+' já havia sido usado nesta filial/tipo e foi registrado como '+res.numero+'.\nGere o PDF novamente para que ele mostre o número correto ('+res.numero+').');
+      }
+    }catch(e){}
   });
   window.print();
 }
