@@ -1,16 +1,16 @@
 {
   "soja": {
-    "valor": "130,00",
-    "data": "19/08/2026"
+    "valor": "133,00",
+    "data": "21/08/2026"
   },
   "milho": {
-    "valor": "60,00",
-    "data": "19/08/2026"
+    "valor": "62,00",
+    "data": "21/08/2026"
   },
   "fonte": "EPAGRI/Cepa - praca Extremo Oeste - Val. Mais Comum",
-  "atualizado_em": "2026-08-24",
+  "atualizado_em": "2026-08-25",
   "trigo": {
     "valor": "73,00",
-    "data": "19/08/2026"
+    "data": "21/08/2026"
   }
 }
