@@ -253,7 +253,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v1.7 · 24/08/2026';
+const APP_VERSAO='v1.9 · 25/08/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
 const LABELS={
@@ -450,11 +450,10 @@ function buildFields(){
       <div class="fld"><label class="flab">Data do contrato de arrendamento</label><input class="f" type="date" id="an_data_arr"></div></div></fieldset>`;
   }
 
-  // Produto e imóvel
-  h+=`<fieldset><legend>Produto e imóvel</legend>
-    <div class="grid2"><div class="fld"><label class="flab">Quantidade (sacas 60 kg)</label><input class="f" id="qtde_sacas" placeholder="ex.: 500" oninput="baseCalc='sacas';calc()"></div>
-    <div class="fld"><label class="flab">Equivalente em kg</label><input class="f calc" id="qtde_kg" readonly placeholder="calculado"></div></div>
-    <div class="fld full"><label class="flab">Safra</label><input class="f" id="safra" value="2026/2027"></div>
+  const fisica = cfg.tipo==='fisica';
+
+  // Imóvel
+  h+=`<fieldset><legend>Imóvel</legend>
     <div class="grid2"><div class="fld"><label class="flab">Matrícula do imóvel</label><input class="f" id="matricula" placeholder="nº"></div>
     <div class="fld"><label class="flab">Comarca do Registro de Imóveis (RI)</label><input class="f" id="comarca_ri" placeholder="Comarca"></div>
     <div class="fld"><label class="flab">Município/UF do imóvel</label><input class="f" id="mun_imovel" placeholder="Município/UF"></div>
@@ -463,9 +462,23 @@ function buildFields(){
     <div class="fld"><label class="flab">Área total (ha)<span class="hint" tabindex="0" data-tip="Área total do imóvel descrito.">?</span></label><input class="f" id="area_total" placeholder="ha"></div>
     <div class="fld"><label class="flab">Área cultivada (ha)<span class="hint" tabindex="0" data-tip="Área cultivada no imóvel descrito do produto referência da CPR.">?</span></label><input class="f" id="area_cult" placeholder="ha"></div></div></fieldset>`;
 
-  const fisica = cfg.tipo==='fisica';
+  // Produto
+  h+=`<fieldset><legend>Produto</legend>
+    <div class="grid2"><div class="fld"><label class="flab">Quantidade (sacas 60 kg)</label><input class="f" id="qtde_sacas" placeholder="ex.: 500" oninput="baseCalc='sacas';calc()"></div>
+    <div class="fld"><label class="flab">Equivalente em kg</label><input class="f calc" id="qtde_kg" readonly placeholder="calculado"></div></div>
+    <div class="fld full"><label class="flab">Safra</label><input class="f" id="safra" value="2026/2027"></div></fieldset>`;
 
-  // Entrega — só na CPR Física (obrigação de entrega do produto)
+  // Precificação e valores (logo após o Produto: quantidade e valores no mesmo campo de visão)
+  const _ref=PRECOS_EPAGRI[cfg.cultura]||{valor:'',data:''};
+  h+=`<fieldset><legend>Precificação e valores</legend>
+    <div class="grid2"><div class="fld"><label class="flab">Preço de referência (R$/saca)<a class="hint" href="https://cepa.epagri.sc.gov.br/index.php/mercado-agricola/" target="_blank" rel="noopener" data-tip="Preço pré-preenchido pela referência EPAGRI/Cepa — praça Extremo Oeste (valor mais comum da saca de 60 kg). Confira e ajuste se houver divulgação mais recente. Clique para abrir a página de preços (PREÇOS DIÁRIOS) em nova guia.">?</a></label><input class="f" id="preco_saca" value="${_ref.valor}" placeholder="ex.: 130,00" oninput="calc()"></div>
+    <div class="fld"><label class="flab">Data de apuração</label><input class="f" id="data_apuracao" value="${_ref.data}" placeholder="ex.: 15/08/2026"></div></div>
+    <div class="grid2"><div class="fld"><label class="flab">${fisica?'Valor referencial / antecipação (R$)':'Valor líquido a desembolsar (R$)'}<span class="hint" tabindex="0" data-tip="Pode digitar o valor: a quantidade (sacas/kg) é recalculada automaticamente. Ou digite a quantidade e o valor é calculado. O preço de referência liga os dois.">?</span></label><input class="f" id="valor" placeholder="ex.: 100.000,00" oninput="baseCalc='valor';calc()"></div>
+    ${fisica?'':`<div class="fld"><label class="flab">Data de vencimento<span class="hint" tabindex="0" data-tip="Data de Vencimento da Campanha / Prazo de Venda.">?</span></label><input class="f" type="date" id="vencimento"></div>`}
+    </div>
+  </fieldset>`;
+
+  // Entrega — só na CPR Física (após a precificação, para não separar Produto e Precificação)
   if(fisica){
     h+=`<fieldset><legend>Entrega</legend>
       <div class="grid2"><div class="fld"><label class="flab">Local de entrega (unidade)</label>
@@ -480,16 +493,6 @@ function buildFields(){
         </select></div>
       <div class="fld"><label class="flab">Prazo de entrega<span class="hint" tabindex="0" data-tip="Pré-definido pela cultura/safra a partir da data de emissão. Pode ajustar se necessário.">?</span></label><input class="f" id="prazo_entrega" placeholder="ex.: 31/03/2027"></div></div></fieldset>`;
   }
-
-  // Precificação e valores (rótulos conforme o tipo)
-  const _ref=PRECOS_EPAGRI[cfg.cultura]||{valor:'',data:''};
-  h+=`<fieldset><legend>Precificação e valores</legend>
-    <div class="grid2"><div class="fld"><label class="flab">Preço de referência (R$/saca)<a class="hint" href="https://cepa.epagri.sc.gov.br/index.php/mercado-agricola/" target="_blank" rel="noopener" data-tip="Preço pré-preenchido pela referência EPAGRI/Cepa — praça Extremo Oeste (valor mais comum da saca de 60 kg). Confira e ajuste se houver divulgação mais recente. Clique para abrir a página de preços (PREÇOS DIÁRIOS) em nova guia.">?</a></label><input class="f" id="preco_saca" value="${_ref.valor}" placeholder="ex.: 130,00" oninput="calc()"></div>
-    <div class="fld"><label class="flab">Data de apuração</label><input class="f" id="data_apuracao" value="${_ref.data}" placeholder="ex.: 15/08/2026"></div></div>
-    <div class="grid2"><div class="fld"><label class="flab">${fisica?'Valor referencial / antecipação (R$)':'Valor líquido a desembolsar (R$)'}<span class="hint" tabindex="0" data-tip="Pode digitar o valor: a quantidade (sacas/kg) é recalculada automaticamente. Ou digite a quantidade e o valor é calculado. O preço de referência liga os dois.">?</span></label><input class="f" id="valor" placeholder="ex.: 100.000,00" oninput="baseCalc='valor';calc()"></div>
-    ${fisica?'':`<div class="fld"><label class="flab">Data de vencimento<span class="hint" tabindex="0" data-tip="Data de Vencimento da Campanha / Prazo de Venda.">?</span></label><input class="f" type="date" id="vencimento"></div>`}
-    </div>
-  </fieldset>`;
 
   document.getElementById('formFields').innerHTML=h;
   // Acessibilidade: associa cada rótulo ao seu campo (label for = id do input/select)
@@ -506,6 +509,19 @@ function buildFields(){
     if(el) el.addEventListener('input',()=>{el.value=maskCPF(el.value);});});
   const _tel=document.getElementById('telefone');
   if(_tel) _tel.addEventListener('input',()=>{_tel.value=maskTel(_tel.value);});
+  // Restrição de caracteres (campos numéricos). Cada grupo aceita só o que faz sentido para aquele dado.
+  const _onInput=(id,fn)=>{const el=document.getElementById(id); if(el) el.addEventListener('input',()=>fn(el));};
+  const soDig  = el=>{ el.value=el.value.replace(/\D/g,''); };                         // só dígitos
+  const numSep = el=>{ el.value=el.value.replace(/[^\d.\-\/ ]/g,''); };                 // dígitos + . - / (espaço)
+  const carMask= el=>{ el.value=el.value.replace(/[^\dA-Za-z.\-\/ ]/g,'').toUpperCase(); }; // CAR: alfanumérico MAIÚSC.
+  const decMask= el=>{ let v=el.value.replace(/[^\d,]/g,''); const i=v.indexOf(','); if(i>=0) v=v.slice(0,i+1)+v.slice(i+1).replace(/,/g,''); el.value=v; }; // decimal (1 vírgula)
+  ['num','filial'].forEach(id=>_onInput(id,soDig));
+  ['rg1','rg2','an_rg1','an_rg2','ie1','matricula','ccir'].forEach(id=>_onInput(id,numSep));
+  _onInput('car',carMask);
+  ['area_total','area_cult'].forEach(id=>_onInput(id,decMask));
+  // Moeda (R$) no preço de referência e no valor total: formata ao sair do campo.
+  const fmtMoedaEl=el=>{ const n=parseMoeda(el.value); el.value=isNaN(n)?'':n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); };
+  ['preco_saca','valor'].forEach(id=>{const el=document.getElementById(id); if(el) el.addEventListener('blur',()=>{ fmtMoedaEl(el); saveFormData(); render(); });});
   // Filial: valida contra a lista, preenche os dados do gerente (CREDORA) e recarrega o número (tipo+filial).
   const _fil=document.getElementById('filial'), _numEl=document.getElementById('num');
   if(_fil){
@@ -529,6 +545,8 @@ function buildFields(){
     e.addEventListener('change',()=>{e.classList.remove('erro');saveFormData();render();});
   });
   restoreFormData();   // repõe o que já havia sido digitado (ao voltar e reeditar a configuração)
+  // Formata em R$ o preço (referência EPAGRI ou restaurado) e o valor, se preenchidos.
+  ['preco_saca','valor'].forEach(id=>{ const el=document.getElementById(id); if(el && el.value.trim()){ const n=parseMoeda(el.value); el.value=isNaN(n)?'':n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); } });
 }
 
 /* Armazenamento temporário (em memória): mantém os dados digitados ao voltar para
@@ -603,12 +621,12 @@ function numCPR(){return `${fv('num','nº')}/${anoTxt()}/${fv('filial','filial')
    Preenche automaticamente os dados da CREDORA a partir da filial informada.
    Atualize este objeto quando a planilha Dados_Gerentes mudar. Filiais sem gerente ficam em branco. */
 const GERENTES = {
-  '1':  {nome:'LEANDRO DECOSTA',        cpf:'080.712.449-45', endereco:'Av. Sete de Setembro',                        numero:'1195', municipio:'Maravilha/SC'},
-  '73': {nome:'LEANDRO DECOSTA',        cpf:'080.712.449-45', endereco:'Av. Sete de Setembro',                        numero:'1195', municipio:'Maravilha/SC'},
-  '41': {nome:'DARLEI LUVIZA',          cpf:'047.925.519-94', endereco:'Rua Seis de Janeiro, Bairro Sabadin',          numero:'',     municipio:'Iraceminha/SC'},
-  '42': {nome:'DARLEI LUVIZA',          cpf:'047.925.519-94', endereco:'Rua Seis de Janeiro, Bairro Sabadin',          numero:'',     municipio:'Iraceminha/SC'},
-  '49': {nome:'ARLAN ANTUNES DE BRIDA', cpf:'041.681.249-08', endereco:'Estrada Geral, Rio Rocinha, Rocinha de Cima',  numero:'',     municipio:'Lauro Muller/SC'},
-  '71': {nome:'REIMAR CAVALLI',         cpf:'001.730.930-19', endereco:'Rua Hugo Kanitz, Bairro Ildo Meneghetti',      numero:'486',  municipio:'Três Passos/RS'}
+  '1':  {nome:'LEANDRO DECOSTA',        cpf:'080.712.449-45', endereco:'Av. Sete de Setembro',                       numero:'1195', bairro:'',                municipio:'Maravilha/SC'},
+  '73': {nome:'LEANDRO DECOSTA',        cpf:'080.712.449-45', endereco:'Av. Sete de Setembro',                       numero:'1195', bairro:'',                municipio:'Maravilha/SC'},
+  '41': {nome:'DARLEI LUVIZA',          cpf:'047.925.519-94', endereco:'Rua Seis de Janeiro',                        numero:'',     bairro:'Sabadin',         municipio:'Iraceminha/SC'},
+  '42': {nome:'DARLEI LUVIZA',          cpf:'047.925.519-94', endereco:'Rua Seis de Janeiro',                        numero:'',     bairro:'Sabadin',         municipio:'Iraceminha/SC'},
+  '49': {nome:'ARLAN ANTUNES DE BRIDA', cpf:'041.681.249-08', endereco:'Estrada Geral, Rio Rocinha, Rocinha de Cima', numero:'',    bairro:'',                municipio:'Lauro Muller/SC'},
+  '71': {nome:'REIMAR CAVALLI',         cpf:'001.730.930-19', endereco:'Rua Hugo Kanitz',                            numero:'486',  bairro:'Ildo Meneghetti', municipio:'Três Passos/RS'}
 };
 /* Todas as filiais válidas (mesmo as que ainda não têm gerente cadastrado). */
 const FILIAIS = ['1','10','14','15','17','19','25','26','37','41','42','43','45','46','48','49','51','58','60','63','67','68','69','71','72','73','90'];
@@ -618,7 +636,7 @@ function preencherGerente(){
   const g=GERENTES[gv('filial')]; if(!g) return;
   const set=(id,val)=>{ const el=document.getElementById(id); if(el) el.value=val||''; };
   set('gerente',g.nome); set('cpfger',g.cpf);
-  set('end_rua',g.endereco); set('end_num',g.numero); set('end_bairro',''); set('end_municipio',g.municipio);
+  set('end_rua',g.endereco); set('end_num',g.numero); set('end_bairro',g.bairro||''); set('end_municipio',g.municipio);
   render();
 }
 /* Marca o campo Filial como inválido quando não corresponde a uma filial da lista. */
@@ -746,7 +764,7 @@ function extensoReais(v){
 /* Valor total (número) e seu extenso — usados no cálculo e no texto das cédulas. */
 /* número positivo a partir de campo pt-BR; retorna NaN se inválido, negativo ou zero */
 function numPos(id){
-  const n=parseFloat(gv(id).replace(/\./g,'').replace(',','.'));
+  const n=parseFloat(gv(id).replace(/[^\d.,-]/g,'').replace(/\./g,'').replace(',','.'));  // tolera "R$", espaços etc.
   return (!isNaN(n) && n>0) ? n : NaN;
 }
 /* Valor em R$ digitado (aceita "R$ 100.000,00", "100000", "100000,50"); NaN se inválido/≤0. */
