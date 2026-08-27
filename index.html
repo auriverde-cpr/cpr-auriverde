@@ -71,8 +71,8 @@
   a.hint{cursor:pointer;background:var(--grao);color:#2a2412}
   a.hint:hover{background:var(--grao-d);color:#fff}
   .hint:focus{outline:none}
-  .hint::after{content:attr(data-tip);position:absolute;bottom:135%;left:50%;transform:translateX(-50%);background:#1c2a24;color:#fff;font-weight:400;font-size:.72rem;line-height:1.35;white-space:normal;width:210px;padding:8px 10px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.28);opacity:0;visibility:hidden;transition:opacity .12s;z-index:60;pointer-events:none}
-  .hint:hover::after,.hint:focus::after{opacity:1;visibility:visible}
+  /* Tooltip flutuante (posicionado por JS, preso à tela e não ao container que rola) */
+  .tip-float{position:fixed;z-index:9999;background:#1c2a24;color:#fff;font-weight:400;font-size:.72rem;line-height:1.35;width:210px;max-width:calc(100vw - 16px);padding:8px 10px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.28);pointer-events:none}
   input.f{font-family:inherit;font-size:.9rem;color:var(--ink);background:var(--field-bg);border:1px solid var(--line);border-radius:7px;padding:9px 11px;width:100%;transition:border-color .15s,box-shadow .15s}
   input.f:focus{outline:none;border-color:var(--grao);box-shadow:0 0 0 3px rgba(198,161,91,.18)}
   input.f,select.f{text-transform:uppercase}                 /* padrão: digitação em MAIÚSCULA */
@@ -83,6 +83,13 @@
   .f.filial-invalida{border-color:#c0392b !important;box-shadow:0 0 0 3px rgba(192,57,43,.15) !important}   /* filial fora da lista */
   .fld-msg{color:#c0392b;font-size:.78rem;margin-top:4px;min-height:0;line-height:1.3}
   .fld-msg:empty{display:none}
+  /* Botões Sim/Não (Sócio, Segurado especial) */
+  .segbtn{display:flex;gap:8px}
+  .segbtn button{flex:1;border:1.5px solid var(--line);border-radius:7px;padding:6px 8px;background:var(--field-bg);color:var(--muted);font-weight:600;font-size:.82rem;cursor:pointer;transition:all .12s}
+  .segbtn button:hover{border-color:var(--folha)}
+  .segbtn button.on{border-color:var(--folha);background:var(--folha);color:#fff}
+  .seg-hidden{position:absolute;width:1px;height:1px;opacity:0;padding:0;margin:0;border:0;pointer-events:none}
+  .seg-hidden.erro + .segbtn button{border-color:#c0392b}
 
   .preview-scroll{max-height:calc(100vh - 180px);overflow:auto;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line)}
   @media(max-width:920px){.preview-scroll{max-height:none}}
@@ -256,7 +263,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v2.1 · 25/08/2026';
+const APP_VERSAO='v3.0 · 27/08/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
 const LABELS={
@@ -407,6 +414,14 @@ function buildFields(){
       <div class="fld"><label class="flab">RG</label><input class="f" id="rg1" placeholder="RG"></div>
       <div class="fld"><label class="flab">CPF</label><input class="f" id="cpf1" inputmode="numeric" placeholder="000.000.000-00"></div>
       <div class="fld"><label class="flab">Inscrição estadual</label><input class="f" id="ie1" placeholder="IE produtor rural"></div>
+    </div>
+    <div class="grid2" style="margin-top:8px">
+      <div class="fld"><label class="flab">Sócio<span class="hint" tabindex="0" data-tip="Emitente é sócio/cooperado da Cooperativa Regional Auriverde? Como verificar? SES1400 (HS) - Parâmetros Gerais">?</span></label>
+        <input type="text" class="f seg-hidden" id="socio" tabindex="-1" aria-hidden="true">
+        <div class="segbtn" data-for="socio"><button type="button" data-v="Sim">Sim</button><button type="button" data-v="Não">Não</button></div></div>
+      <div class="fld"><label class="flab">Segurado especial<span class="hint" tabindex="0" data-tip="Emitente enquadrado como segurado especial? Como verificar? SES1400 (HS) - Parâmetros Gerais - Contr. FUNRURAL: 1 - Não 2 - Sim">?</span></label>
+        <input type="text" class="f seg-hidden" id="segurado_especial" tabindex="-1" aria-hidden="true">
+        <div class="segbtn" data-for="segurado_especial"><button type="button" data-v="Sim">Sim</button><button type="button" data-v="Não">Não</button></div></div>
     </div></fieldset>`;
 
   if(cfg.ecivil==='casado'){
@@ -474,11 +489,15 @@ function buildFields(){
   // Precificação e valores (logo após o Produto: quantidade e valores no mesmo campo de visão)
   const _ref=PRECOS_EPAGRI[cfg.cultura]||{valor:'',data:''};
   h+=`<fieldset><legend>Precificação e valores</legend>
-    <div class="grid2"><div class="fld"><label class="flab">Preço de referência (R$/saca)<a class="hint" href="https://cepa.epagri.sc.gov.br/index.php/mercado-agricola/" target="_blank" rel="noopener" data-tip="Preço pré-preenchido pela referência EPAGRI/Cepa — praça Extremo Oeste (valor mais comum da saca de 60 kg). Confira e ajuste se houver divulgação mais recente. Clique para abrir a página de preços (PREÇOS DIÁRIOS) em nova guia.">?</a></label><input class="f" id="preco_saca" value="${_ref.valor}" placeholder="ex.: 130,00" oninput="calc()"></div>
+    <div class="grid2"><div class="fld"><label class="flab">Preço de referência (R$/saca)<a class="hint" href="https://cepa.epagri.sc.gov.br/index.php/mercado-agricola/" target="_blank" rel="noopener" data-tip="Preço pré-preenchido pela referência EPAGRI/Cepa — praça Extremo Oeste (valor mais comum da saca de 60 kg). Confira e ajuste se houver divulgação mais recente. Clique para abrir a página de preços (PREÇOS DIÁRIOS) em nova guia.">?</a></label><input class="f" id="preco_saca" value="${_ref.valor}" placeholder="R$ 0,00" oninput="maskMoeda(this);calc()"></div>
     <div class="fld"><label class="flab">Data de apuração</label><input class="f" id="data_apuracao" value="${_ref.data}" placeholder="ex.: 15/08/2026"></div></div>
-    <div class="grid2"><div class="fld"><label class="flab">${fisica?'Valor referencial / antecipação (R$)':'Valor líquido a desembolsar (R$)'}<span class="hint" tabindex="0" data-tip="Pode digitar o valor: a quantidade (sacas/kg) é recalculada automaticamente. Ou digite a quantidade e o valor é calculado. O preço de referência liga os dois.">?</span></label><input class="f" id="valor" placeholder="ex.: 100.000,00" oninput="baseCalc='valor';calc()"></div>
+    <div class="grid2"><div class="fld"><label class="flab">${fisica?'Antecipação ao produtor / valor líquido (R$)':'Valor líquido a desembolsar (R$)'}<span class="hint" tabindex="0" data-tip="${fisica?'Valor líquido que o produtor recebe (antecipação). O bruto e o FUNRURAL são calculados a partir daqui. Também dá para informar a quantidade e o líquido é calculado de volta.':'Pode digitar o valor: a quantidade (sacas/kg) é recalculada. Ou digite a quantidade e o valor é calculado. O preço liga os dois.'}">?</span></label><input class="f" id="valor" placeholder="R$ 0,00" oninput="maskMoeda(this);baseCalc='valor';calc()"></div>
     ${fisica?'':`<div class="fld"><label class="flab">Data de vencimento<span class="hint" tabindex="0" data-tip="Data de Vencimento da Campanha / Prazo de Venda.">?</span></label><input class="f" type="date" id="vencimento"></div>`}
     </div>
+    ${fisica?`<div class="grid2">
+      <div class="fld"><label class="flab">FUNRURAL (encargo, R$)<span class="hint" tabindex="0" data-tip="Encargo calculado sobre o valor bruto, conforme Sócio e Segurado especial. Some ao líquido para formar o bruto e a quantidade a entregar.">?</span></label><input class="f calc" id="funrural" readonly placeholder="calculado"></div>
+      <div class="fld"><label class="flab">Valor bruto (R$)<span class="hint" tabindex="0" data-tip="Valor líquido + FUNRURAL. Base para a quantidade de produto a ser entregue.">?</span></label><input class="f calc" id="valor_bruto" readonly placeholder="calculado"></div>
+    </div>`:''}
   </fieldset>`;
 
   // Entrega — só na CPR Física (após a precificação, para não separar Produto e Precificação)
@@ -525,6 +544,17 @@ function buildFields(){
   // Moeda (R$) no preço de referência e no valor total: formata ao sair do campo.
   const fmtMoedaEl=el=>{ const n=parseMoeda(el.value); el.value=isNaN(n)?'':n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); };
   ['preco_saca','valor'].forEach(id=>{const el=document.getElementById(id); if(el) el.addEventListener('blur',()=>{ fmtMoedaEl(el); saveFormData(); render(); });});
+  // Botões Sim/Não (Sócio, Segurado especial): gravam num input oculto .f (salvo/validado como os demais).
+  document.querySelectorAll('#formFields .segbtn').forEach(grp=>{
+    const inp=document.getElementById(grp.dataset.for);
+    grp.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        if(inp){ inp.value=btn.dataset.v; inp.dispatchEvent(new Event('input',{bubbles:true})); }
+        grp.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b===btn));
+        calc();   // Sócio/Segurado mudam a taxa de FUNRURAL -> recalcula quantidade/valor (Física)
+      });
+    });
+  });
   // Filial: valida contra a lista, preenche os dados do gerente (CREDORA) e recarrega o número (tipo+filial).
   const _fil=document.getElementById('filial'), _numEl=document.getElementById('num');
   if(_fil){
@@ -550,6 +580,14 @@ function buildFields(){
   restoreFormData();   // repõe o que já havia sido digitado (ao voltar e reeditar a configuração)
   // Formata em R$ o preço (referência EPAGRI ou restaurado) e o valor, se preenchidos.
   ['preco_saca','valor'].forEach(id=>{ const el=document.getElementById(id); if(el && el.value.trim()){ const n=parseMoeda(el.value); el.value=isNaN(n)?'':n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); } });
+  syncSegBtns();       // marca o botão Sim/Não ativo conforme o valor restaurado
+}
+/* Marca como ativo o botão Sim/Não que corresponde ao valor guardado no input oculto. */
+function syncSegBtns(){
+  document.querySelectorAll('#formFields .segbtn').forEach(grp=>{
+    const inp=document.getElementById(grp.dataset.for); const v=inp?inp.value:'';
+    grp.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+  });
 }
 
 /* Armazenamento temporário (em memória): mantém os dados digitados ao voltar para
@@ -778,36 +816,66 @@ function parseMoeda(str){
   const s=(str||'').replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',','.');
   const n=parseFloat(s); return (!isNaN(n)&&n>0)?n:NaN;
 }
-/* baseCalc define quem é a origem do cálculo:
-   'sacas' -> valor = sacas × preço;  'valor' -> sacas = truncar(valor ÷ preço, 2 casas). */
+/* ===== FUNRURAL (incide apenas na CPR Física) =====
+   Taxa conforme Sócio × Segurado especial; NaN enquanto ambos não forem respondidos. */
+function taxaFunrural(){
+  const s=gv('socio'), e=gv('segurado_especial');
+  if(!s||!e) return NaN;
+  const socio=(s==='Sim'), seg=(e==='Sim');
+  if(socio&&seg)  return 0.0150;   // sócio + segurado especial
+  if(socio&&!seg) return 0.0163;   // sócio + não segurado
+  if(!socio&&seg) return 0.0250;   // não sócio + segurado especial
+  return 0.0263;                   // não sócio + não segurado
+}
+/* Taxa usada no cálculo: Física usa a taxa (0 enquanto não escolhida); Financeira = 0 (sem FUNRURAL). */
+function taxaEfetiva(){ if(cfg.tipo!=='fisica') return 0; const t=taxaFunrural(); return isNaN(t)?0:t; }
+
+/* baseCalc = origem do cálculo: 'sacas' (informou quantidade) ou 'valor' (informou o líquido/antecipação). */
 let baseCalc='sacas';
 function fmtSacas(n){ return n.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:2}); }
-function valorNumerico(){
-  const p=numPos('preco_saca');
-  if(baseCalc==='valor') return parseMoeda(gv('valor'));
-  const s=numPos('qtde_sacas');
-  return (!isNaN(s)&&!isNaN(p)) ? s*p : NaN;
+function fmtBRL(n){ return (isNaN(n)||n>=1e12)?'':n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+/* Máscara de moeda ao vivo: os dígitos digitados preenchem os centavos (ex.: 13000 -> R$ 130,00). */
+function maskMoeda(el){
+  const digits=el.value.replace(/\D/g,'').replace(/^0+/,'');
+  el.value = digits ? (parseInt(digits,10)/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '';
 }
-function sacasNumerico(){
+
+/* Valores coerentes da operação:
+   liquido  = antecipação / valor a desembolsar (o que o produtor recebe);
+   bruto    = liquido ÷ (1 − taxa)  (Física; na Financeira taxa=0 → bruto=liquido);
+   funrural = bruto − liquido;  sacas = bruto ÷ preço (truncado em 2 casas). */
+function calcValores(){
+  const p=numPos('preco_saca'), t=taxaEfetiva();
+  let liquido, bruto, sacas;
   if(baseCalc==='valor'){
-    const v=parseMoeda(gv('valor')), p=numPos('preco_saca');
-    return (!isNaN(v)&&!isNaN(p)) ? Math.trunc((v/p)*100)/100 : NaN;   // trunca em 2 casas
-  }
-  return numPos('qtde_sacas');
-}
-function valorDisplay(){ const t=valorNumerico(); return (isNaN(t)||t>=1e12)?'':t.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
-function valorExtensoAtual(){ const t=valorNumerico(); return (isNaN(t)||t>=1e12)?'':extensoReais(t); }
-function calc(){
-  const sac=sacasNumerico();
-  document.getElementById('qtde_kg').value=isNaN(sac)?'':Math.round(sac*60).toLocaleString('pt-BR')+' kg';
-  if(baseCalc==='valor'){
-    // valor é a origem (digitado): recalcula as sacas; não sobrescreve o que o usuário digitou no valor.
-    const el=document.getElementById('qtde_sacas'); if(el) el.value=isNaN(sac)?'':fmtSacas(sac);
+    liquido = parseMoeda(gv('valor'));
+    bruto   = isNaN(liquido) ? NaN : liquido/(1-t);
+    sacas   = (!isNaN(bruto)&&!isNaN(p)) ? Math.trunc((bruto/p)*100)/100 : NaN;
   } else {
-    // sacas é a origem: recalcula o valor.
-    const total=valorNumerico();
-    const el=document.getElementById('valor'); if(el) el.value=isNaN(total)?'':total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    sacas   = numPos('qtde_sacas');
+    bruto   = (!isNaN(sacas)&&!isNaN(p)) ? sacas*p : NaN;
+    liquido = isNaN(bruto) ? NaN : bruto*(1-t);
   }
+  const funrural = (isNaN(bruto)||isNaN(liquido)) ? NaN : (bruto-liquido);
+  return {taxa:t, preco:p, liquido, bruto, sacas, funrural};
+}
+/* Valor "principal" exibido = líquido (antecipação / valor a desembolsar). */
+function valorNumerico(){ return calcValores().liquido; }
+function valorDisplay(){ return fmtBRL(valorNumerico()); }
+function valorExtensoAtual(){ const t=valorNumerico(); return (isNaN(t)||t>=1e12)?'':extensoReais(t); }
+function brutoDisplay(){ return fmtBRL(calcValores().bruto); }
+function funruralDisplay(){ return fmtBRL(calcValores().funrural); }
+
+function calc(){
+  const v=calcValores();
+  const kg=document.getElementById('qtde_kg'); if(kg) kg.value=isNaN(v.sacas)?'':Math.round(v.sacas*60).toLocaleString('pt-BR')+' kg';
+  if(baseCalc==='valor'){
+    const el=document.getElementById('qtde_sacas'); if(el) el.value=isNaN(v.sacas)?'':fmtSacas(v.sacas);
+  } else {
+    const el=document.getElementById('valor'); if(el) el.value=fmtBRL(v.liquido);
+  }
+  const eb=document.getElementById('valor_bruto'); if(eb) eb.value=fmtBRL(v.bruto);       // auxiliares (Física)
+  const ef=document.getElementById('funrural');    if(ef) ef.value=fmtBRL(v.funrural);
   render();
 }
 
@@ -850,6 +918,8 @@ function render(){
   const prodFem = (cfg.cultura==='soja');   // soja = feminino; milho/trigo = masculino
   const valorFull = (valorDisplay()?`<span class="fillv">${esc(valorDisplay())}</span>`:`<span class="emptyv">[R$ 0,00]</span>`) +
                     ' (' + (valorExtensoAtual()?`<span class="fillv lc">${esc(valorExtensoAtual())}</span>`:`<span class="emptyv">[por extenso]</span>`) + ')';
+  const brutoFull = brutoDisplay()?`<span class="fillv">${esc(brutoDisplay())}</span>`:`<span class="emptyv">[R$ 0,00]</span>`;
+  const funruralSpan = funruralDisplay()?`<span class="fillv">${esc(funruralDisplay())}</span>`:`<span class="emptyv">[R$ 0,00]</span>`;
 
   // ---- preâmbulo emitentes ----
   let emit;
@@ -895,8 +965,8 @@ function render(){
     <tr><td class="lab">12. Instituição de referência (valoração)</td><td>EPAGRI, por intermédio do Centro de Socioeconomia e Planejamento Agrícola (Epagri/Cepa).</td></tr>
     <tr><td class="lab">13. Praça de formação do preço</td><td>Praça Extremo Oeste Catarinense, conforme levantamento de preços agrícolas da Epagri/Cepa (valor mais comum).</td></tr>
     <tr><td class="lab">14. Preço de referência e data de apuração</td><td>R$ ${fv('preco_saca','0,00')} por saca de 60 kg, apurado em ${fv('data_apuracao','data')}.</td></tr>
-    <tr><td class="lab">15. Valor referencial de emissão</td><td>${valorFull}, na forma do art. 2º, § 6º, da Resolução CMN nº 4.870/2020.</td></tr>
-    <tr><td class="lab">16. Antecipação do preço paga pela CREDORA</td><td>${valorFull}, na forma da Cláusula Terceira.</td></tr>
+    <tr><td class="lab">15. Valor referencial de emissão (bruto)</td><td>${brutoFull}, na forma do art. 2º, § 6º, da Resolução CMN nº 4.870/2020. Sobre este valor bruto incide o FUNRURAL (encargo retido pela CREDORA) de ${funruralSpan}, por ocasião da comercialização do produto rural.</td></tr>
+    <tr><td class="lab">16. Antecipação do preço paga pela CREDORA (líquido)</td><td>${valorFull}, correspondente ao valor bruto (item 15) deduzido o FUNRURAL, na forma da Cláusula Terceira.</td></tr>
     <tr><td class="lab">17. Data e forma do pagamento da antecipação</td><td>Pagamento até ${pagamentoSpan()} (emissão + 30 dias), mediante crédito na conta movimento junto à CREDORA, na forma do item 3.2.</td></tr>
     <tr><td class="lab">18. Garantia</td><td>Penhor agrícola de primeiro grau sobre a lavoura e a produção de ${produto} da área identificada nos itens 7 e 8.</td></tr>
     <tr><td class="lab">19. Encargos moratórios</td><td>Juros de mora de 1% ao mês; correção monetária pela variação positiva do INPC; multa não compensatória de 2% (dois por cento), na forma da Cláusula Sexta.</td></tr>
@@ -1351,6 +1421,29 @@ async function gerarPDF(){
   });
   window.print();
 }
+
+/* Tooltip flutuante dos "?" — posicionado na tela e limitado às bordas (não é cortado pelo container que rola). */
+(function(){
+  let tip=null;
+  function hide(){ if(tip){ tip.remove(); tip=null; } }
+  function show(el){
+    const txt=el.getAttribute('data-tip'); if(!txt) return;
+    hide();
+    tip=document.createElement('div'); tip.className='tip-float'; tip.textContent=txt;
+    document.body.appendChild(tip);
+    const r=el.getBoundingClientRect(), tw=tip.offsetWidth, th=tip.offsetHeight;
+    let left=r.left + r.width/2 - tw/2;
+    left=Math.max(8, Math.min(left, window.innerWidth - tw - 8));   // preso às bordas
+    let top=r.top - th - 8;
+    if(top<8) top=r.bottom + 8;                                     // sem espaço acima -> mostra abaixo
+    tip.style.left=left+'px'; tip.style.top=top+'px';
+  }
+  document.addEventListener('mouseover',e=>{ const h=e.target.closest && e.target.closest('.hint'); if(h) show(h); });
+  document.addEventListener('mouseout', e=>{ const h=e.target.closest && e.target.closest('.hint'); if(h) hide(); });
+  document.addEventListener('focusin', e=>{ const h=e.target.closest && e.target.closest('.hint'); if(h) show(h); });
+  document.addEventListener('focusout',hide);
+  window.addEventListener('scroll',hide,true);
+})();
 </script>
 </body>
 </html>
