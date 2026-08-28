@@ -263,7 +263,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v3.0 · 27/08/2026';
+const APP_VERSAO='v3.1 · 27/08/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
 const LABELS={
@@ -415,14 +415,14 @@ function buildFields(){
       <div class="fld"><label class="flab">CPF</label><input class="f" id="cpf1" inputmode="numeric" placeholder="000.000.000-00"></div>
       <div class="fld"><label class="flab">Inscrição estadual</label><input class="f" id="ie1" placeholder="IE produtor rural"></div>
     </div>
-    <div class="grid2" style="margin-top:8px">
+    ${cfg.tipo==='fisica'?`<div class="grid2" style="margin-top:8px">
       <div class="fld"><label class="flab">Sócio<span class="hint" tabindex="0" data-tip="Emitente é sócio/cooperado da Cooperativa Regional Auriverde? Como verificar? SES1400 (HS) - Parâmetros Gerais">?</span></label>
         <input type="text" class="f seg-hidden" id="socio" tabindex="-1" aria-hidden="true">
         <div class="segbtn" data-for="socio"><button type="button" data-v="Sim">Sim</button><button type="button" data-v="Não">Não</button></div></div>
       <div class="fld"><label class="flab">Segurado especial<span class="hint" tabindex="0" data-tip="Emitente enquadrado como segurado especial? Como verificar? SES1400 (HS) - Parâmetros Gerais - Contr. FUNRURAL: 1 - Não 2 - Sim">?</span></label>
         <input type="text" class="f seg-hidden" id="segurado_especial" tabindex="-1" aria-hidden="true">
         <div class="segbtn" data-for="segurado_especial"><button type="button" data-v="Sim">Sim</button><button type="button" data-v="Não">Não</button></div></div>
-    </div></fieldset>`;
+    </div>`:''}</fieldset>`;
 
   if(cfg.ecivil==='casado'){
     h+=`<fieldset><legend>2º Emitente (cônjuge)</legend>
