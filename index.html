@@ -263,7 +263,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v3.1 · 27/08/2026';
+const APP_VERSAO='v3.5 · 05/09/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
 const LABELS={
@@ -343,7 +343,7 @@ function flex(sexo,ecivil,kind){ // kind: 'E' (emitente) ou 'A' (anuente)
   if(casal){
     return {
       T:TITU, TS:TITU+'S', plural:true, fem:false,
-      art:'os', artU:'Os', de:'dos',
+      art:'os', artU:'Os', de:'dos', por:'pelos', ao:'aos',
       nac:'brasileiros', portador:'portadores', inscrito:'inscritos',
       domic:'residentes e domiciliados', promete:'prometem', obriga:'obrigam-se',
       constitui:'constituem', declara:'declaram', possui:'possuem', assume:'assumem',
@@ -353,7 +353,7 @@ function flex(sexo,ecivil,kind){ // kind: 'E' (emitente) ou 'A' (anuente)
   if(fem){
     return {
       T:TITU, TS:TITU, plural:false, fem:true,
-      art:'a', artU:'A', de:'da',
+      art:'a', artU:'A', de:'da', por:'pela', ao:'à',
       nac:'brasileira', portador:'portadora', inscrito:'inscrita',
       domic:'residente e domiciliada', promete:'promete', obriga:'obriga-se',
       constitui:'constitui', declara:'declara', possui:'possui', assume:'assume',
@@ -362,7 +362,7 @@ function flex(sexo,ecivil,kind){ // kind: 'E' (emitente) ou 'A' (anuente)
   }
   return {
     T:TITU, TS:TITU, plural:false, fem:false,
-    art:'o', artU:'O', de:'do',
+    art:'o', artU:'O', de:'do', por:'pelo', ao:'ao',
     nac:'brasileiro', portador:'portador', inscrito:'inscrito',
     domic:'residente e domiciliado', promete:'promete', obriga:'obriga-se',
     constitui:'constitui', declara:'declara', possui:'possui', assume:'assume',
@@ -497,7 +497,10 @@ function buildFields(){
     ${fisica?`<div class="grid2">
       <div class="fld"><label class="flab">FUNRURAL (encargo, R$)<span class="hint" tabindex="0" data-tip="Encargo calculado sobre o valor bruto, conforme Sócio e Segurado especial. Some ao líquido para formar o bruto e a quantidade a entregar.">?</span></label><input class="f calc" id="funrural" readonly placeholder="calculado"></div>
       <div class="fld"><label class="flab">Valor bruto (R$)<span class="hint" tabindex="0" data-tip="Valor líquido + FUNRURAL. Base para a quantidade de produto a ser entregue.">?</span></label><input class="f calc" id="valor_bruto" readonly placeholder="calculado"></div>
-    </div>`:''}
+    </div>`:`<div class="grid2">
+      <div class="fld"><label class="flab">Juros remuneratórios (R$)<span class="hint" tabindex="0" data-tip="Juros compostos pela taxa da regional da filial (não editável), pelo prazo entre a emissão e o vencimento. É a diferença entre o total devido e a antecipação.">?</span></label><input class="f calc" id="juros_fin" readonly placeholder="calculado"></div>
+      <div class="fld"><label class="flab">Valor total devido no vencimento (R$)<span class="hint" tabindex="0" data-tip="Antecipação + juros remuneratórios. É a base da quantidade referenciada e o montante a pagar no vencimento.">?</span></label><input class="f calc" id="total_devido" readonly placeholder="calculado"></div>
+    </div>`}
   </fieldset>`;
 
   // Entrega — só na CPR Física (após a precificação, para não separar Produto e Precificação)
@@ -564,6 +567,7 @@ function buildFields(){
       if(!filialValida(gv('filial'))) return;
       preencherGerente();
       preencherProximoNumero(true);   // filial nova -> busca a numeração da nova filial
+      calc();                         // filial define os juros regionais (Financeira) -> recalcula
     });
   }
   // Prazo de entrega recalcula ao mudar a data de emissão, enquanto não for editado à mão.
@@ -573,6 +577,8 @@ function buildFields(){
       if(_pz.value===_pz.dataset.auto){ const novo=prazoEntregaPadrao(); _pz.value=novo; _pz.dataset.auto=novo; saveFormData(); render(); }
     });
   }
+  // Emissão e vencimento definem o prazo dos juros (Financeira) -> recalcula ao alterar.
+  ['data_emissao','vencimento'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('change',calc); });
   document.querySelectorAll('#formFields .f').forEach(e=>{
     e.addEventListener('input',()=>{e.classList.remove('erro');saveFormData();render();});
     e.addEventListener('change',()=>{e.classList.remove('erro');saveFormData();render();});
@@ -670,7 +676,7 @@ const GERENTES = {
   '71': {nome:'REIMAR CAVALLI',         cpf:'001.730.930-19', endereco:'Rua Hugo Kanitz',                            numero:'486',  bairro:'Ildo Meneghetti', municipio:'Três Passos/RS'}
 };
 /* Todas as filiais válidas (mesmo as que ainda não têm gerente cadastrado). */
-const FILIAIS = ['1','10','14','15','17','19','25','26','37','41','42','43','45','46','48','49','51','58','60','63','67','68','69','71','72','73','90'];
+const FILIAIS = ['1','10','14','15','17','19','25','26','37','41','42','43','44','45','46','48','49','51','58','60','63','67','68','69','71','72','73','90'];
 function filialValida(f){ return FILIAIS.indexOf(String(f||'').trim())>=0; }
 /* Preenche os campos da CREDORA (gerente) a partir da filial, se houver cadastro. */
 function preencherGerente(){
@@ -772,6 +778,15 @@ function prazoEntregaPadrao(){
   if(cfg.cultura==='soja')  return cfg.safra_tipo==='safrinha' ? `30/04/${y+1}` : `28/02/${y+1}`;
   return '';
 }
+/* Mesmo limite acima, como Date — teto do vencimento na CPR Financeira. null se sem data/cultura. */
+function prazoMaximoData(){
+  const dt=emissaoDate(); if(!dt) return null;
+  const y=dt.getFullYear();
+  if(cfg.cultura==='trigo') return new Date(y,10,30);        // 30/11 do ano da emissão
+  if(cfg.cultura==='milho') return new Date(y+1,1,28);       // 28/02 do ano seguinte
+  if(cfg.cultura==='soja')  return cfg.safra_tipo==='safrinha' ? new Date(y+1,3,30) : new Date(y+1,1,28);
+  return null;
+}
 
 /* Valor por extenso (reais) — preenchido automaticamente */
 function numeroExtenso(n){
@@ -827,8 +842,41 @@ function taxaFunrural(){
   if(!socio&&seg) return 0.0250;   // não sócio + segurado especial
   return 0.0263;                   // não sócio + não segurado
 }
-/* Taxa usada no cálculo: Física usa a taxa (0 enquanto não escolhida); Financeira = 0 (sem FUNRURAL). */
+/* Taxa FUNRURAL usada no cálculo: Física usa a taxa (0 enquanto não escolhida); Financeira não usa. */
 function taxaEfetiva(){ if(cfg.tipo!=='fisica') return 0; const t=taxaFunrural(); return isNaN(t)?0:t; }
+
+/* ===== Juros remuneratórios da CPR Financeira (por regional da filial; não editáveis) ===== */
+const JUROS_REGIONAL = {
+  Oeste:{ taxa:0.018, filiais:['1','10','14','15','17','19','25','26','37','41','42','46','48','58','72','73','90'] },
+  Sul:  { taxa:0.019, filiais:['43','44','45','49','51','69'] },
+  RS:   { taxa:0.020, filiais:['60','63','67','68','71'] }
+};
+function regionalFilial(filial){ filial=String(filial||'').trim(); for(const k in JUROS_REGIONAL){ if(JUROS_REGIONAL[k].filiais.indexOf(filial)>=0) return k; } return null; }
+function jurosRegional(filial){ const r=regionalFilial(filial); return r?JUROS_REGIONAL[r].taxa:null; }
+/* Prazo em meses (fração) entre emissão e vencimento: dias ÷ 30. NaN se datas ausentes/inválidas. */
+function mesesFinanceira(){
+  const emi=emissaoDate(); const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(gv('vencimento'));
+  if(!emi||!m) return NaN;
+  const dias=(new Date(+m[1],+m[2]-1,+m[3])-emi)/86400000;
+  return dias>0 ? dias/30 : NaN;
+}
+/* Multiplicador antecipação → valor de referência:
+   Física     = 1 ÷ (1 − taxa FUNRURAL)  → valorRef = valor bruto;
+   Financeira = (1 + juros)^meses         → valorRef = montante final devido (juros compostos). */
+function multiplicador(){
+  if(cfg.tipo==='fisica') return 1/(1-taxaEfetiva());
+  const i=jurosRegional(gv('filial')), n=mesesFinanceira();
+  return (i==null||isNaN(n)) ? 1 : Math.pow(1+i, n);
+}
+
+/* Produtividade máxima (sacas por hectare de área cultivada), por cultura/safra.
+   Usada só para BLOQUEAR a emissão quando a quantidade ultrapassa o teto (não é exibida no formulário). */
+function limiteProdutividade(){
+  if(cfg.cultura==='milho') return 250;
+  if(cfg.cultura==='trigo') return 90;
+  if(cfg.cultura==='soja')  return cfg.safra_tipo==='safrinha' ? 55 : 100;
+  return null;
+}
 
 /* baseCalc = origem do cálculo: 'sacas' (informou quantidade) ou 'valor' (informou o líquido/antecipação). */
 let baseCalc='sacas';
@@ -841,30 +889,39 @@ function maskMoeda(el){
 }
 
 /* Valores coerentes da operação:
-   liquido  = antecipação / valor a desembolsar (o que o produtor recebe);
-   bruto    = liquido ÷ (1 − taxa)  (Física; na Financeira taxa=0 → bruto=liquido);
-   funrural = bruto − liquido;  sacas = bruto ÷ preço (truncado em 2 casas). */
+   antecipacao = valor líquido a desembolsar (o que o produtor recebe agora);
+   valorRef    = antecipacao × multiplicador  (Física: valor bruto; Financeira: montante devido);
+   encargo     = valorRef − antecipacao  (Física: FUNRURAL; Financeira: juros);
+   sacas       = valorRef ÷ preço (truncado em 2 casas). */
 function calcValores(){
-  const p=numPos('preco_saca'), t=taxaEfetiva();
-  let liquido, bruto, sacas;
+  const p=numPos('preco_saca'), m=multiplicador();
+  let antecipacao, valorRef, sacas;
   if(baseCalc==='valor'){
-    liquido = parseMoeda(gv('valor'));
-    bruto   = isNaN(liquido) ? NaN : liquido/(1-t);
-    sacas   = (!isNaN(bruto)&&!isNaN(p)) ? Math.trunc((bruto/p)*100)/100 : NaN;
+    antecipacao = parseMoeda(gv('valor'));
+    valorRef    = isNaN(antecipacao) ? NaN : antecipacao*m;
+    sacas       = (!isNaN(valorRef)&&!isNaN(p)) ? Math.trunc((valorRef/p)*100)/100 : NaN;
   } else {
-    sacas   = numPos('qtde_sacas');
-    bruto   = (!isNaN(sacas)&&!isNaN(p)) ? sacas*p : NaN;
-    liquido = isNaN(bruto) ? NaN : bruto*(1-t);
+    sacas       = numPos('qtde_sacas');
+    valorRef    = (!isNaN(sacas)&&!isNaN(p)) ? sacas*p : NaN;
+    antecipacao = isNaN(valorRef) ? NaN : valorRef/m;
   }
-  const funrural = (isNaN(bruto)||isNaN(liquido)) ? NaN : (bruto-liquido);
-  return {taxa:t, preco:p, liquido, bruto, sacas, funrural};
+  const encargo = (isNaN(valorRef)||isNaN(antecipacao)) ? NaN : (valorRef-antecipacao);
+  return {mult:m, preco:p, antecipacao, valorRef, sacas, encargo,
+          liquido:antecipacao, bruto:valorRef, funrural:encargo};   // aliases de compatibilidade
 }
-/* Valor "principal" exibido = líquido (antecipação / valor a desembolsar). */
-function valorNumerico(){ return calcValores().liquido; }
+/* Valor "principal" exibido = antecipação / valor líquido a desembolsar. */
+function valorNumerico(){ return calcValores().antecipacao; }
 function valorDisplay(){ return fmtBRL(valorNumerico()); }
 function valorExtensoAtual(){ const t=valorNumerico(); return (isNaN(t)||t>=1e12)?'':extensoReais(t); }
-function brutoDisplay(){ return fmtBRL(calcValores().bruto); }
-function funruralDisplay(){ return fmtBRL(calcValores().funrural); }
+function brutoDisplay(){ return fmtBRL(calcValores().valorRef); }         // Física: valor bruto
+function funruralDisplay(){ return fmtBRL(calcValores().encargo); }       // Física: FUNRURAL
+function totalDevidoDisplay(){ return fmtBRL(calcValores().valorRef); }   // Financeira: montante final devido
+function jurosDisplay(){ return fmtBRL(calcValores().encargo); }          // Financeira: juros remuneratórios
+function taxaJurosPct(){ const i=jurosRegional(gv('filial')); return (i==null)?'':(i*100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function prazoMesesDisplay(){ const n=mesesFinanceira(); return isNaN(n)?'':n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+/* Custo efetivo (Financeira): do período (juros ÷ antecipação) e anual equivalente ((1+i)^12−1). */
+function cetPeriodoPct(){ const cv=calcValores(); return (isNaN(cv.antecipacao)||isNaN(cv.valorRef)||cv.antecipacao<=0)?'':(((cv.valorRef/cv.antecipacao)-1)*100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function cetAnualPct(){ const i=jurosRegional(gv('filial')); return (i==null)?'':((Math.pow(1+i,12)-1)*100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
 function calc(){
   const v=calcValores();
@@ -872,10 +929,12 @@ function calc(){
   if(baseCalc==='valor'){
     const el=document.getElementById('qtde_sacas'); if(el) el.value=isNaN(v.sacas)?'':fmtSacas(v.sacas);
   } else {
-    const el=document.getElementById('valor'); if(el) el.value=fmtBRL(v.liquido);
+    const el=document.getElementById('valor'); if(el) el.value=fmtBRL(v.antecipacao);
   }
-  const eb=document.getElementById('valor_bruto'); if(eb) eb.value=fmtBRL(v.bruto);       // auxiliares (Física)
-  const ef=document.getElementById('funrural');    if(ef) ef.value=fmtBRL(v.funrural);
+  const eb=document.getElementById('valor_bruto');  if(eb) eb.value=fmtBRL(v.valorRef);   // Física: valor bruto
+  const ef=document.getElementById('funrural');     if(ef) ef.value=fmtBRL(v.encargo);    // Física: FUNRURAL
+  const et=document.getElementById('total_devido'); if(et) et.value=fmtBRL(v.valorRef);   // Financeira: total devido
+  const ej=document.getElementById('juros_fin');    if(ej) ej.value=fmtBRL(v.encargo);    // Financeira: juros
   render();
 }
 
@@ -964,10 +1023,10 @@ function render(){
     <tr><td class="lab">11. Forma de liquidação</td><td>Exclusivamente <b>FÍSICA</b>, mediante entrega do produto rural, sem liquidação financeira.</td></tr>
     <tr><td class="lab">12. Instituição de referência (valoração)</td><td>EPAGRI, por intermédio do Centro de Socioeconomia e Planejamento Agrícola (Epagri/Cepa).</td></tr>
     <tr><td class="lab">13. Praça de formação do preço</td><td>Praça Extremo Oeste Catarinense, conforme levantamento de preços agrícolas da Epagri/Cepa (valor mais comum).</td></tr>
-    <tr><td class="lab">14. Preço de referência e data de apuração</td><td>R$ ${fv('preco_saca','0,00')} por saca de 60 kg, apurado em ${fv('data_apuracao','data')}.</td></tr>
+    <tr><td class="lab">14. Preço de referência e data de apuração</td><td>${fv('preco_saca','R$ 0,00')} por saca de 60 kg, apurado em ${fv('data_apuracao','data')}.</td></tr>
     <tr><td class="lab">15. Valor referencial de emissão (bruto)</td><td>${brutoFull}, na forma do art. 2º, § 6º, da Resolução CMN nº 4.870/2020. Sobre este valor bruto incide o FUNRURAL (encargo retido pela CREDORA) de ${funruralSpan}, por ocasião da comercialização do produto rural.</td></tr>
     <tr><td class="lab">16. Antecipação do preço paga pela CREDORA (líquido)</td><td>${valorFull}, correspondente ao valor bruto (item 15) deduzido o FUNRURAL, na forma da Cláusula Terceira.</td></tr>
-    <tr><td class="lab">17. Data e forma do pagamento da antecipação</td><td>Pagamento até ${pagamentoSpan()} (emissão + 30 dias), mediante crédito na conta movimento junto à CREDORA, na forma do item 3.2.</td></tr>
+    <tr><td class="lab">17. Data e forma do pagamento da antecipação</td><td>Pagamento em até 10 (dez) dias úteis após o registro do título junto a entidade autorizada pelo Banco Central do Brasil, mediante crédito na conta movimento junto à CREDORA, na forma do item 3.2.</td></tr>
     <tr><td class="lab">18. Garantia</td><td>Penhor agrícola de primeiro grau sobre a lavoura e a produção de ${produto} da área identificada nos itens 7 e 8.</td></tr>
     <tr><td class="lab">19. Encargos moratórios</td><td>Juros de mora de 1% ao mês; correção monetária pela variação positiva do INPC; multa não compensatória de 2% (dois por cento), na forma da Cláusula Sexta.</td></tr>
     <tr><td class="lab">20. Registro do título</td><td>Entidade autorizada pelo Banco Central do Brasil, em até 30 (trinta) dias úteis da emissão.</td></tr>
@@ -992,13 +1051,13 @@ function render(){
   <div class="cl-h">CLÁUSULA SEGUNDA – DO VALOR REFERENCIAL, DA INSTITUIÇÃO DE REFERÊNCIA E DO CRITÉRIO DE VALORAÇÃO</div>
   <p class="cl">2.1. <b>Instituição de referência</b>: as partes elegem, como instituição responsável pela apuração e divulgação do preço do produto, a <b>EPAGRI – Empresa de Pesquisa Agropecuária e Extensão Rural de Santa Catarina</b>, por intermédio do seu Centro de Socioeconomia e Planejamento Agrícola (Epagri/Cepa), instituição pública estadual de reconhecida idoneidade, que realiza levantamento de preços agrícolas em praças do Estado de Santa Catarina, com atualização diária e divulgação pública e gratuita no endereço eletrônico cepa.epagri.sc.gov.br.</p>
   <p class="cl">2.2. <b>Praça e índice de referência</b>: praça Extremo Oeste Catarinense, integrante do levantamento de preços agrícolas da Epagri/Cepa, adotando-se como referência o valor mais comum recebido pelos produtores rurais pela saca de 60 kg de ${produto} em grão divulgado para a referida praça.</p>
-  <p class="cl">2.3. <b>Valor referencial de emissão</b>: para os fins do art. 2º, § 6º, da Resolução CMN nº 4.870/2020, o valor referencial de emissão desta Cédula é de ${valorFull}, correspondente à multiplicação da quantidade indicada no item 1.1 pelo preço de referência de R$ ${fv('preco_saca','0,00')} por saca de 60 kg, apurado em ${fv('data_apuracao','data')}. O valor referencial serve exclusivamente para os fins de registro e não constitui obrigação de pagamento, que é substituída pela entrega do produto.</p>
+  <p class="cl">2.3. <b>Valor referencial de emissão</b>: para os fins do art. 2º, § 6º, da Resolução CMN nº 4.870/2020, o valor referencial de emissão desta Cédula é de ${brutoFull}, correspondente à multiplicação da quantidade indicada no item 1.1 pelo preço de referência de ${fv('preco_saca','R$ 0,00')} por saca de 60 kg, apurado em ${fv('data_apuracao','data')}. O valor referencial serve exclusivamente para os fins de registro e não constitui obrigação de pagamento, que é substituída pela entrega do produto.</p>
   <p class="cl">2.4. <b>Critério de valoração</b>: nas hipóteses em que esta Cédula admita conversão da obrigação de entrega em pagamento em dinheiro, notadamente na forma da Cláusula Sexta, o produto será valorado pelo preço ${prodFem?'da':'do'} ${produto} divulgado pela Epagri/Cepa para a praça indicada no item 2.2, vigente na data do inadimplemento, multiplicado pela quantidade não entregue.</p>
 
   <div class="cl-h">CLÁUSULA TERCEIRA – DA ANTECIPAÇÃO DO PREÇO PELA CREDORA</div>
   <p class="cl">3.1. <b>Antecipação do preço</b>: em contraprestação à promessa de entrega objeto desta Cédula, a <b>CREDORA</b> antecipa ${E.art==='os'?'aos':(E.fem?'à':'ao')} <b>${EM}</b> o preço ${prodFem?'da':'do'} ${produto} a ser entregue, no valor de ${valorFull}, livre de quaisquer deduções, em parcela única, até a data indicada no item 17 do Quadro-Resumo. A antecipação do preço constitui a única contraprestação devida pela <b>CREDORA</b>, não incidindo sobre a operação juros remuneratórios ou encargos financeiros de qualquer natureza.</p>
   <p class="cl">3.2. <b>Forma de pagamento</b>: o pagamento da antecipação será realizado mediante crédito na conta movimento junto à <b>CREDORA</b>, de titularidade ${E.de} <b>${EM}</b>, valendo o respectivo aviso de crédito como comprovante e prova plena do pagamento, independentemente de recibo em apartado.</p>
-  <p class="cl">3.3. <b>Condições da antecipação</b>: o pagamento da antecipação fica condicionado, cumulativamente, (i) à assinatura desta Cédula por todos os signatários e testemunhas; (ii) à entrega, ${E.de} <b>${EM}</b>, da matrícula atualizada do imóvel, do recibo de inscrição no CAR e dos demais documentos exigidos pela <b>CREDORA</b>; e (iii) à adoção das providências necessárias ao registro do título e à averbação da garantia, na forma da Cláusula Nona.</p>
+  <p class="cl">3.3. <b>Condições da antecipação</b>: o pagamento da antecipação fica condicionado, cumulativamente, (i) à assinatura desta Cédula por todos os signatários e testemunhas; (ii) à entrega, ${E.por} <b>${EM}</b>, da matrícula atualizada do imóvel, do recibo de inscrição no CAR e dos demais documentos exigidos pela <b>CREDORA</b>; e (iii) à adoção das providências necessárias ao registro do título e à averbação da garantia, na forma da Cláusula Nona.</p>
 
   <div class="cl-h">CLÁUSULA QUARTA – DO LOCAL, DO PRAZO E DAS CONDIÇÕES DE ENTREGA</div>
   <p class="cl">4.1. <b>Local de entrega</b> (art. 3º, V, da Lei nº 8.929/1994): a entrega será realizada na unidade de recebimento da <b>CREDORA</b> situada em ${fv('local_entrega','cidade/UF')}, ou em outra unidade por ela indicada por escrito com antecedência mínima de 5 (cinco) dias, correndo o transporte, o frete e os riscos até a efetiva entrega por conta exclusiva ${E.de} <b>${EM}</b>.</p>
@@ -1011,33 +1070,33 @@ function render(){
   <p class="cl">5.1. A pesagem e a classificação do produto serão realizadas na unidade de recebimento da <b>CREDORA</b>, por seus equipamentos e prepostos, na presença ${E.de} <b>${EM}</b> ou de quem por ${E.plural?'eles':(E.fem?'ela':'ele')} for indicado, facultada ${E.plural?'a estes':'a este'} a conferência dos resultados no ato da recepção.</p>
 
   <div class="cl-h">CLÁUSULA SEXTA – DO INADIMPLEMENTO DA ENTREGA</div>
-  <p class="cl">6.1. Não realizada a entrega, total ou parcial, no prazo e nas condições da Cláusula Quarta, constituir-se-á ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> em mora de pleno direito a partir do dia seguinte ao termo final, independentemente de aviso, notificação ou interpelação, nos termos do art. 3º, II, da Lei nº 8.929/1994 e do art. 397 do Código Civil.</p>
+  <p class="cl">6.1. Não realizada a entrega, total ou parcial, no prazo e nas condições da Cláusula Quarta, constituir-se-${E.plural?'ão':'á'} ${E.art} <b>${EM}</b> em mora de pleno direito a partir do dia seguinte ao termo final, independentemente de aviso, notificação ou interpelação, nos termos do art. 3º, II, da Lei nº 8.929/1994 e do art. 397 do Código Civil.</p>
   <p class="cl">6.2. <b>Execução para entrega</b>: verificado o inadimplemento, a <b>CREDORA</b> poderá promover a execução para entrega de coisa incerta, com a consequente busca e apreensão do produto, nos termos do art. 15 da Lei nº 8.929/1994 e dos arts. 811 a 813 do Código de Processo Civil, constituindo esta Cédula título executivo extrajudicial, líquido e certo quanto à quantidade e à qualidade.</p>
   <p class="cl">6.3. <b>Conversão em perdas e danos</b>: alternativamente, a critério exclusivo da <b>CREDORA</b>, a obrigação de entrega não cumprida poderá ser convertida em pagamento em dinheiro, correspondente ao valor da quantidade não entregue, valorada na forma do item 2.4, acrescido dos encargos moratórios previstos no item 6.4 e das perdas e danos apuradas, sem prejuízo da restituição da antecipação do preço correspondente ao produto não entregue.</p>
   <p class="cl">6.4. <b>Encargos moratórios</b>: sobre o valor apurado na forma do item 6.3 incidirão os encargos indicados no item 19 do Quadro-Resumo: (i) juros de mora de 1% ao mês; (ii) correção monetária pela variação positiva do INPC; e (iii) multa não compensatória de 2% (dois por cento), calculados desde a data do inadimplemento até a liquidação final.</p>
 
   <div class="cl-h">CLÁUSULA SÉTIMA – DO VENCIMENTO ANTECIPADO</div>
-  <p class="cl">7.1. A <b>CREDORA</b> poderá declarar esta Cédula vencida antecipadamente, tornando imediatamente exigível a entrega da totalidade do produto ou, à sua escolha, o valor equivalente apurado na forma do item 2.4, independentemente de aviso extrajudicial, interpelação judicial ou notificação prévia, nas seguintes hipóteses: a) inadimplemento, ${E.de} <b>${EM}</b>, de qualquer obrigação prevista nesta Cédula; b) alienação, promessa de alienação ou constituição de ônus reais sobre os bens dados em garantia, sem a anuência prévia e expressa da CREDORA; c) declaração judicial de insolvência civil, pedido de falência ou de recuperação judicial ou extrajudicial ${E.de} <b>${EM}</b>; d) falecimento, incapacidade total ou pedido de interdição de qualquer ${E.de} <b>${EM}</b>; e) protesto de título ou descumprimento de decisão judicial transitada em julgado; f) inadimplemento ou vencimento antecipado de qualquer outra obrigação ${E.de} <b>${EM}</b> perante a CREDORA; g) cancelamento ou suspensão de autorizações e licenças ambientais essenciais à atividade; h) alteração da atividade de modo que deixe de atuar como produtor rural; i) prática de ato tendente a anular, revisar ou repudiar esta Cédula; j) falsidade ou inexatidão das declarações prestadas na Cláusula Nona; k) descumprimento das obrigações de registro e averbação previstas na Cláusula Oitava.</p>
+  <p class="cl">7.1. A <b>CREDORA</b> poderá declarar esta Cédula vencida antecipadamente, tornando imediatamente exigível a entrega da totalidade do produto ou, à sua escolha, o valor equivalente apurado na forma do item 2.4, independentemente de aviso extrajudicial, interpelação judicial ou notificação prévia, nas seguintes hipóteses: a) inadimplemento, ${E.de} <b>${EM}</b>, de qualquer obrigação prevista nesta Cédula; b) alienação, promessa de alienação ou constituição de ônus reais sobre os bens dados em garantia, sem a anuência prévia e expressa da CREDORA; c) declaração judicial de insolvência civil, pedido de falência ou de recuperação judicial ou extrajudicial ${E.de} <b>${EM}</b>; d) falecimento, incapacidade total ou pedido de interdição de qualquer ${E.de} <b>${EM}</b>; e) protesto de título ou descumprimento de decisão judicial transitada em julgado; f) inadimplemento ou vencimento antecipado de qualquer outra obrigação ${E.de} <b>${EM}</b> perante a CREDORA; g) cancelamento ou suspensão de autorizações e licenças ambientais essenciais à atividade; h) alteração da atividade de modo que ${E.plural?'deixem':'deixe'} de atuar como ${E.plural?'produtores rurais':'produtor rural'}; i) prática de ato tendente a anular, revisar ou repudiar esta Cédula; j) falsidade ou inexatidão das declarações prestadas na Cláusula Nona; k) descumprimento das obrigações de registro e averbação previstas na Cláusula Oitava.</p>
 
   <div class="cl-h">CLÁUSULA OITAVA – DA GARANTIA CEDULARMENTE CONSTITUÍDA E DA IDENTIFICAÇÃO DO IMÓVEL</div>
   <p class="cl">8.1. Nos termos do art. 5º da Lei nº 8.929/1994, dos arts. 1.438 e 1.442, II e III, do Código Civil e do art. 6º, I e II, da Lei nº 492/1937, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> ${E.constitui} em favor da <b>CREDORA</b> <b>penhor agrícola de primeiro grau</b> sobre a lavoura e a produção de ${produto} descritas na Cláusula Primeira, pendentes ou em formação, cultivadas na área identificada no item 1.2, como garantia do integral cumprimento da obrigação de entrega assumida.</p>
   <p class="cl">8.2. <b>Identificação do imóvel</b>: imóvel rural ${A?'objeto do arrendamento indicado no item 1.2':`de propriedade ${E.de} próprio${E.plural?'s':''} <b>${EM}</b>`}, matriculado sob o nº ${fv('matricula','matrícula')} no Cartório de Registro de Imóveis da Comarca de ${fv('comarca_ri','Comarca')}, situado no Município de ${fv('mun_imovel','Município')}, com área total de ${fv('area_total','ha')} hectares, inscrito no CAR sob o nº ${fv('car','CAR')} e no Cadastro de Imóveis Rurais (CCIR/Incra) sob o nº ${fv('ccir','CCIR')}, cuja área cultivada vinculada a esta Cédula é de ${fv('area_cult','ha')} hectares.</p>
-  <p class="cl">8.3. O produto empenhado permanecerá em poder ${E.de} <b>${EM}</b>, que ${E.assume} a condição de fiel${E.plural?'is':''} depositário${E.plural?'s':''}, sem qualquer remuneração, respondendo pela guarda e conservação dos bens na forma dos arts. 627 a 646 do Código Civil e do art. 7º, § 1º, da Lei nº 8.929/1994.</p>
+  <p class="cl">8.3. O produto empenhado permanecerá em poder ${E.de} <b>${EM}</b>, que ${E.assume} a condição de ${E.plural?'fiéis':'fiel'} depositário${E.plural?'s':''}, sem qualquer remuneração, respondendo pela guarda e conservação dos bens na forma dos arts. 627 a 646 do Código Civil e do art. 7º, § 1º, da Lei nº 8.929/1994.</p>
   <p class="cl">8.4. É expressamente vedada a constituição de qualquer novo ônus ou garantia sobre a lavoura e a produção empenhadas, bem como a emissão de outra Cédula de Produto Rural ou contrato de compra e venda futura referenciados à mesma safra e área, sem prévia anuência da <b>CREDORA</b>, sob pena de vencimento antecipado.</p>
-  <p class="cl">8.5. Verificada diminuição ou depreciação da garantia constituída, a <b>CREDORA</b> comunicará o fato ${E.de} <b>${EM}</b>, por escrito, que ${E.plural?'deverão':'deverá'} reforçá-la no prazo de 10 (dez) dias, sob pena de vencimento antecipado.</p>
+  <p class="cl">8.5. Verificada diminuição ou depreciação da garantia constituída, a <b>CREDORA</b> comunicará o fato ${E.ao} <b>${EM}</b>, por escrito, que ${E.plural?'deverão':'deverá'} reforçá-la no prazo de 10 (dez) dias, sob pena de vencimento antecipado.</p>
   <p class="cl">8.6. ${E.artU} <b>${EM}</b> ${E.obriga} a manter a lavoura e o produto empenhados cobertos por seguro agrícola ou instrumento equivalente, indicando a <b>CREDORA</b> como beneficiária da indenização até o limite do seu crédito.</p>
   <p class="cl">8.7. Os bens vinculados a esta Cédula não serão penhorados ou sequestrados por outras dívidas ${E.de} <b>${EM}</b>, cumprindo denunciar a existência desta Cédula às autoridades incumbidas da diligência, nos termos do art. 18 da Lei nº 8.929/1994.</p>
-  <p class="cl">8.8. Sem prejuízo do registro previsto no item 20 do Quadro-Resumo, o penhor agrícola constituído nesta Cláusula será levado a registro no Cartório de Registro de Imóveis da circunscrição em que localizado o imóvel indicado no item 8.2, na forma do art. 12, §§ 1º e 2º, da Lei nº 8.929/1994, no prazo de 3 (três) dias úteis. Para os fins do registro da garantia, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b>${emAnu} ${E.plural||A?'obrigam-se':'obriga-se'} a fornecer, às suas expensas, todos os documentos exigidos pelo Oficial de Registro de Imóveis.</p>
+  <p class="cl">8.8. Sem prejuízo do registro previsto no item 20 do Quadro-Resumo, o penhor agrícola constituído nesta Cláusula será levado a registro no Cartório de Registro de Imóveis da circunscrição em que localizado o imóvel indicado no item 8.2, na forma do art. 12, §§ 1º e 2º, da Lei nº 8.929/1994. Para os fins do registro da garantia, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b>${emAnu} ${E.plural||A?'obrigam-se':'obriga-se'} a fornecer, às suas expensas, todos os documentos exigidos pelo Oficial de Registro de Imóveis.</p>
 
   <div class="cl-h">CLÁUSULA NONA – DAS DECLARAÇÕES ${E.plural?'DOS EMITENTES':'DO EMITENTE'}</div>
-  <p class="cl">9.1. ${E.artU} <b>${EM}</b> ${E.declara}, sob as penas da lei: a) que ${E.possui} legitimação para a emissão desta Cédula, na forma do art. 2º, I, da Lei nº 8.929/1994; b) que são verdadeiras e exatas todas as informações relativas à qualificação, área cultivada, safra, quantidade e qualidade do produto e aos bens oferecidos em garantia, ciente de que declaração falsa caracteriza crime, nos termos do art. 17 da Lei nº 8.929/1994; c) que a lavoura e a produção empenhadas estão livres de ônus e não foram vinculadas a outra CPR, contrato de compra e venda futura ou operação de barter referente à mesma safra e área; d) que não se ${E.plural?'encontram':'encontra'} em insolvência, recuperação judicial ou extrajudicial; e) que o imóvel indicado no item 8.2 possui inscrição regular no CAR e que a atividade observa a legislação ambiental e trabalhista, sem trabalho em condições análogas às de escravo ou infantil; f) que a lavoura e a produção dadas em garantia não são essenciais ao exercício da atividade, para os fins do art. 5º, § 1º, da Lei nº 8.929/1994; g) que ${E.recebe} a antecipação do preço prevista na Cláusula Terceira como única contraprestação da CREDORA, ciente de que a obrigação consiste na entrega do produto; h) que ${E.esta} ciente de que o instrumento foi ajustado em caráter irrevogável e irretratável.</p>
+  <p class="cl">9.1. ${E.artU} <b>${EM}</b> ${E.declara}, sob as penas da lei: a) que ${E.possui} legitimação para a emissão desta Cédula, na forma do art. 2º, I, da Lei nº 8.929/1994; b) que são verdadeiras e exatas todas as informações relativas à qualificação, área cultivada, safra, quantidade e qualidade do produto e aos bens oferecidos em garantia, ${E.ciente} de que declaração falsa caracteriza crime, nos termos do art. 17 da Lei nº 8.929/1994; c) que a lavoura e a produção empenhadas estão livres de ônus e não foram vinculadas a outra CPR, contrato de compra e venda futura ou operação de barter referente à mesma safra e área; d) que não se ${E.plural?'encontram':'encontra'} em insolvência, recuperação judicial ou extrajudicial; e) que o imóvel indicado no item 8.2 possui inscrição regular no CAR e que a atividade observa a legislação ambiental e trabalhista, sem trabalho em condições análogas às de escravo ou infantil; f) que a lavoura e a produção dadas em garantia não são essenciais ao exercício da atividade, para os fins do art. 5º, § 1º, da Lei nº 8.929/1994; g) que ${E.recebe} a antecipação do preço prevista na Cláusula Terceira como única contraprestação da CREDORA, ${E.ciente} de que a obrigação consiste na entrega do produto; h) que ${E.esta} ${E.ciente} de que o instrumento foi ajustado em caráter irrevogável e irretratável.</p>
 
   <div class="cl-h">CLÁUSULA DÉCIMA – DA FISCALIZAÇÃO</div>
-  <p class="cl">10.1. A <b>CREDORA</b>, por intermédio de pessoa por ela indicada, poderá, sempre que julgar conveniente, vistoriar a lavoura e o produto dados em penhor, bem como acompanhar o desenvolvimento da cultura e a formação da produção, sem que possa ser obstada ${E.de} <b>${EM}</b>${emAnu} ou por terceiros, obrigando-se ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b>${emAnu} a franquear o acesso à área e a apresentar os documentos solicitados.</p>
+  <p class="cl">10.1. A <b>CREDORA</b>, por intermédio de pessoa por ela indicada, poderá, sempre que julgar conveniente, vistoriar a lavoura e o produto dados em penhor, bem como acompanhar o desenvolvimento da cultura e a formação da produção, sem que possa ser obstada ${E.por} <b>${EM}</b>${emAnu} ou por terceiros, obrigando-se ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b>${emAnu} a franquear o acesso à área e a apresentar os documentos solicitados.</p>
 
   <div class="cl-h">CLÁUSULA DÉCIMA PRIMEIRA – DOS TRIBUTOS E DESPESAS</div>
   <p class="cl">11.1. Os tributos incidentes em decorrência desta Cédula, quando devidos, serão pagos pelo respectivo contribuinte, de acordo com a legislação aplicável.</p>
-  <p class="cl">11.2. Todas as despesas com registro, depósito, averbação, formalização, cobrança, honorários advocatícios e custas judiciais e extrajudiciais decorrentes desta Cédula serão suportadas exclusivamente ${E.de} <b>${EM}</b>.</p>
+  <p class="cl">11.2. Todas as despesas com registro, depósito, averbação, formalização, cobrança, honorários advocatícios e custas judiciais e extrajudiciais decorrentes desta Cédula serão suportadas exclusivamente ${E.por} <b>${EM}</b>.</p>
 
   <div class="cl-h">CLÁUSULA DÉCIMA SEGUNDA – DAS DISPOSIÇÕES GERAIS</div>
   <p class="cl">12.1. Esta Cédula constitui título executivo extrajudicial, líquido e certo quanto à quantidade e à qualidade do produto, nos termos do art. 4º da Lei nº 8.929/1994 e do art. 784, III e XII, do Código de Processo Civil, aparelhando execução para entrega de coisa incerta e, na hipótese de conversão, execução por quantia certa.</p>
@@ -1068,6 +1127,15 @@ function renderFinanceira(){
   const prodFem = (cfg.cultura==='soja');   // soja = feminino; milho/trigo = masculino
   const valorFull = (valorDisplay()?`<span class="fillv">${esc(valorDisplay())}</span>`:`<span class="emptyv">[R$ 0,00]</span>`) +
                     ' (' + (valorExtensoAtual()?`<span class="fillv lc">${esc(valorExtensoAtual())}</span>`:`<span class="emptyv">[por extenso]</span>`) + ')';
+  // Financeira: montante final devido (com juros), juros em R$, taxa da regional e prazo.
+  const _totNum=calcValores().valorRef;
+  const totalFull = (totalDevidoDisplay()?`<span class="fillv">${esc(totalDevidoDisplay())}</span>`:`<span class="emptyv">[R$ 0,00]</span>`) +
+                    ' (' + ((!isNaN(_totNum)&&_totNum>0&&_totNum<1e12)?`<span class="fillv lc">${esc(extensoReais(_totNum))}</span>`:`<span class="emptyv">[por extenso]</span>`) + ')';
+  const jurosSpan = jurosDisplay()?`<span class="fillv">${esc(jurosDisplay())}</span>`:`<span class="emptyv">[R$ 0,00]</span>`;
+  const taxaPct   = taxaJurosPct()?`<span class="fillv lc">${esc(taxaJurosPct())}%</span>`:`<span class="emptyv">[taxa da filial]</span>`;
+  const prazoMes  = prazoMesesDisplay()?`<span class="fillv lc">${esc(prazoMesesDisplay())}</span>`:`<span class="emptyv">[prazo]</span>`;
+  const cetAnual   = cetAnualPct()?`<span class="fillv lc">${esc(cetAnualPct())}%</span>`:`<span class="emptyv">[CET a.a.]</span>`;
+  const cetPeriodo = cetPeriodoPct()?`<span class="fillv lc">${esc(cetPeriodoPct())}%</span>`:`<span class="emptyv">[custo do período]</span>`;
   const EM = E.plural?'EMITENTES':'EMITENTE';
   const emAnu = A ? ` e <b>${A.plural?'ANUENTES':'ANUENTE'}</b>` : '';
 
@@ -1106,12 +1174,12 @@ function renderFinanceira(){
     <tr><td class="lab">8. Área total / cultivada</td><td>Área total do imóvel: ${fv('area_total','ha')} ha. Área cultivada e vinculada a esta Cédula: ${fv('area_cult','ha')} ha.</td></tr>
     <tr><td class="lab">9. Instituição de referência para a precificação</td><td>EPAGRI, por intermédio do Centro de Socioeconomia e Planejamento Agrícola (Epagri/Cepa).</td></tr>
     <tr><td class="lab">10. Praça de formação do preço</td><td>Praça Extremo Oeste Catarinense, conforme levantamento de preços agrícolas da Epagri/Cepa (valor mais comum).</td></tr>
-    <tr><td class="lab">11. Preço de referência e data de apuração</td><td>R$ ${fv('preco_saca','0,00')} por saca de 60 kg, apurado em ${fv('data_apuracao','data')}.</td></tr>
-    <tr><td class="lab">12. Valor referencial de emissão</td><td>${valorFull}, na forma do art. 2º, § 6º, da Resolução CMN nº 4.870/2020.</td></tr>
-    <tr><td class="lab">13. Valor líquido a desembolsar</td><td>${valorFull}.</td></tr>
-    <tr><td class="lab">14. Data e forma do desembolso</td><td>Desembolso até ${pagamentoSpan()} (emissão + 30 dias), mediante crédito na conta movimento junto à credora, indicada no item 3.2.</td></tr>
-    <tr><td class="lab">15. Juros remuneratórios</td><td>0,00% ao mês (0,00% ao ano), na forma da Cláusula Quarta.</td></tr>
-    <tr><td class="lab">16. Montante final devido no vencimento</td><td>${valorFull}.</td></tr>
+    <tr><td class="lab">11. Preço de referência e data de apuração</td><td>${fv('preco_saca','R$ 0,00')} por saca de 60 kg, apurado em ${fv('data_apuracao','data')}.</td></tr>
+    <tr><td class="lab">12. Valor referencial de emissão</td><td>${totalFull}, na forma do art. 2º, § 6º, da Resolução CMN nº 4.870/2020.</td></tr>
+    <tr><td class="lab">13. Valor líquido a desembolsar (antecipação)</td><td>${valorFull}.</td></tr>
+    <tr><td class="lab">14. Data e forma do desembolso</td><td>Desembolso em até 10 (dez) dias úteis após o registro do título junto a entidade autorizada pelo Banco Central do Brasil, mediante crédito na conta movimento junto à CREDORA, indicada no item 3.2.</td></tr>
+    <tr><td class="lab">15. Juros remuneratórios</td><td>${taxaPct} ao mês (equivalente a ${cetAnual} ao ano), capitalizados mensalmente (juros compostos), pelo prazo de ${prazoMes} meses entre o desembolso e o vencimento, totalizando ${jurosSpan}, na forma da Cláusula Quarta.</td></tr>
+    <tr><td class="lab">16. Montante final devido no vencimento</td><td>${totalFull}, correspondente ao valor líquido desembolsado (item 13) acrescido dos juros remuneratórios (item 15).</td></tr>
     <tr><td class="lab">17. Vencimento</td><td>${dataBRField('vencimento','data')}.</td></tr>
     <tr><td class="lab">18. Forma de liquidação</td><td>Exclusivamente <b>FINANCEIRA</b>, em moeda corrente nacional, sem obrigação de entrega física do produto.</td></tr>
     <tr><td class="lab">19. Garantia</td><td>Penhor agrícola de primeiro grau sobre a lavoura e a produção de ${produto} da área identificada nos itens 7 e 8.</td></tr>
@@ -1139,18 +1207,18 @@ function renderFinanceira(){
   <p class="cl">2.2. <b>Praça de formação do preço</b>: praça Extremo Oeste Catarinense, integrante do levantamento de preços agrícolas da Epagri/Cepa.</p>
   <p class="cl">2.3. <b>Índice de preço adotado</b>: valor mais comum recebido pelos produtores rurais pela saca de 60 kg de ${produto} em grão, levantado e divulgado pela Epagri/Cepa para a praça indicada no item 2.2.</p>
   <p class="cl">2.4. <b>Preço de referência na emissão e data de apuração</b>: o preço de referência e a respectiva data de apuração são os indicados no item 11 do Quadro-Resumo, resultando no valor referencial de emissão indicado no item 12, informação lançada nesta Cédula para os fins do art. 2º, § 6º, da Resolução CMN nº 4.870/2020.</p>
-  <p class="cl">2.5. <b>Critério de obtenção do valor de liquidação</b> (art. 3º, X, da Lei nº 8.929/1994): o valor de liquidação desta Cédula corresponde ao montante final devido indicado no item 16 do Quadro-Resumo, obtido pela multiplicação da quantidade referenciada (item 6) pelo preço de referência acordado (item 11), não havendo acréscimo de juros remuneratórios, fixados em 0,00% na forma da Cláusula Quarta. O preço fica fixado na emissão, de forma que as oscilações posteriores da cotação, para mais ou para menos, não alteram o montante devido no vencimento.</p>
+  <p class="cl">2.5. <b>Critério de obtenção do valor de liquidação</b> (art. 3º, X, da Lei nº 8.929/1994): o valor de liquidação desta Cédula corresponde ao montante final devido indicado no item 16 do Quadro-Resumo, obtido pela multiplicação da quantidade referenciada (item 6) pelo preço de referência acordado (item 11), o qual já incorpora os juros remuneratórios previstos na Cláusula Quarta. O preço fica fixado na emissão, de forma que as oscilações posteriores da cotação, para mais ou para menos, não alteram o montante devido no vencimento.</p>
 
   <div class="cl-h">CLÁUSULA TERCEIRA – DO DESEMBOLSO DO RECURSO</div>
   <p class="cl">3.1. <b>Valor líquido a desembolsar</b>: a <b>CREDORA</b> disponibilizará ${E.art==='os'?'aos':(E.fem?'à':'ao')} <b>${EM}</b> a quantia líquida indicada no item 13 do Quadro-Resumo, livre de quaisquer deduções, em parcela única, até a data indicada no item 14.</p>
   <p class="cl">3.2. <b>Forma de desembolso</b>: o crédito será realizado na conta movimento junto à <b>CREDORA</b>, de titularidade ${E.de} <b>${EM}</b>, valendo o respectivo aviso de crédito como comprovante e prova plena do desembolso, independentemente de recibo em apartado.</p>
-  <p class="cl">3.3. <b>Condições do desembolso</b>: o desembolso fica condicionado, cumulativamente, (i) à assinatura desta Cédula por todos os signatários e testemunhas; (ii) à entrega, ${E.de} <b>${EM}</b>, da matrícula atualizada do imóvel, do recibo de inscrição no CAR e dos demais documentos exigidos pela <b>CREDORA</b>; e (iii) à adoção das providências necessárias ao registro do título e à averbação da garantia, na forma da Cláusula Sétima.</p>
+  <p class="cl">3.3. <b>Condições do desembolso</b>: o desembolso fica condicionado, cumulativamente, (i) à assinatura desta Cédula por todos os signatários e testemunhas; (ii) à entrega, ${E.por} <b>${EM}</b>, da matrícula atualizada do imóvel, do recibo de inscrição no CAR e dos demais documentos exigidos pela <b>CREDORA</b>; e (iii) à adoção das providências necessárias ao registro do título e à averbação da garantia, na forma da Cláusula Sétima.</p>
   <p class="cl">3.4. <b>Destinação dos recursos</b>: os recursos desembolsados serão utilizados exclusivamente no custeio da lavoura de ${produto} da safra ${fv('safra','safra')}, notadamente na aquisição de insumos agropecuários, vedada a sua utilização para refinanciamento de dívidas ${E.de} <b>${EM}</b> perante a <b>CREDORA</b>, fornecedores ou terceiros.</p>
 
   <div class="cl-h">CLÁUSULA QUARTA – DOS JUROS REMUNERATÓRIOS E DO MONTANTE FINAL DEVIDO</div>
-  <p class="cl">4.1. <b>Juros remuneratórios</b>: sobre o valor líquido desembolsado incidirão juros remuneratórios à taxa fixa indicada no item 15 do Quadro-Resumo (0,00%), de modo que o montante final devido corresponde integralmente ao valor líquido desembolsado, sem acréscimo de juros.</p>
-  <p class="cl">4.2. <b>Composição do montante final devido</b>: o montante final devido no vencimento, indicado no item 16 do Quadro-Resumo, é composto exclusivamente pelo valor líquido desembolsado (item 13), sendo os juros remuneratórios e demais encargos iguais a R$ 0,00, na forma do item 15.</p>
-  <p class="cl">4.3. <b>Custo efetivo total</b>: o custo efetivo total da operação, considerados todos os encargos previstos nesta Cédula, corresponde a 0,00% ao ano.</p>
+  <p class="cl">4.1. <b>Juros remuneratórios</b>: sobre o valor líquido desembolsado incidirão juros remuneratórios à taxa fixa indicada no item 15 do Quadro-Resumo (${taxaPct} ao mês), capitalizados mensalmente (juros compostos), calculados pro rata die pelo prazo decorrido entre o desembolso e o vencimento (item 17), correspondente a ${prazoMes} meses. A taxa é fixa e não sujeita a repactuação.</p>
+  <p class="cl">4.2. <b>Composição do montante final devido</b>: o montante final devido no vencimento, indicado no item 16 do Quadro-Resumo, é composto pelo valor líquido desembolsado (item 13) acrescido dos juros remuneratórios apurados na forma do item 4.1, que totalizam ${jurosSpan}.</p>
+  <p class="cl">4.3. <b>Custo efetivo total</b>: o custo efetivo total da operação corresponde à taxa de juros remuneratórios de ${taxaPct} ao mês (item 15), equivalente a ${cetAnual} ao ano, resultando, para o prazo de ${prazoMes} meses, em juros de ${jurosSpan}, o que representa ${cetPeriodo} sobre o valor líquido desembolsado (item 13). Não há outros encargos financeiros além dos juros remuneratórios, ressalvados os encargos moratórios previstos no item 20, aplicáveis apenas em caso de inadimplemento.</p>
   <p class="cl">4.4. <b>Transparência das condições financeiras</b>: ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> ${E.declara} que ${E.recebe} previamente à assinatura, e ${E.plural?'compreenderam':'compreendeu'} integralmente, o demonstrativo de cálculo do valor líquido a desembolsar e do montante final devido, bem como os critérios de precificação previstos na Cláusula Segunda.</p>
 
   <div class="cl-h">CLÁUSULA QUINTA – DO VENCIMENTO E DA LIQUIDAÇÃO FINANCEIRA</div>
@@ -1162,27 +1230,27 @@ function renderFinanceira(){
   <p class="cl">5.6. Liquidada integralmente a obrigação, a <b>CREDORA</b> promoverá, no prazo de 10 (dez) dias úteis, a informação da liquidação à entidade registradora e as providências necessárias ao cancelamento da garantia perante o Registro de Imóveis.</p>
 
   <div class="cl-h">CLÁUSULA SEXTA – DO VENCIMENTO ANTECIPADO</div>
-  <p class="cl">6.1. A <b>CREDORA</b> poderá declarar esta Cédula vencida antecipadamente, independentemente de aviso extrajudicial, interpelação judicial ou notificação prévia, nas seguintes hipóteses: a) inadimplemento, ${E.de} <b>${EM}</b>, de qualquer obrigação prevista nesta Cédula; b) alienação, promessa de alienação ou constituição de ônus reais sobre os bens dados em garantia, sem a anuência prévia e expressa da CREDORA; c) declaração judicial de insolvência civil, pedido de falência ou de recuperação judicial ou extrajudicial ${E.de} <b>${EM}</b>; d) falecimento, incapacidade total ou pedido de interdição de qualquer ${E.de} <b>${EM}</b>; e) protesto de título ou descumprimento de decisão judicial transitada em julgado; f) inadimplemento ou vencimento antecipado de qualquer outra obrigação financeira ${E.de} <b>${EM}</b>; g) cancelamento ou suspensão de autorizações e licenças ambientais essenciais à atividade; h) alteração da atividade de modo que deixe de atuar como produtor rural; i) prática de ato tendente a anular, revisar ou repudiar esta Cédula; j) falsidade ou inexatidão das declarações prestadas na Cláusula Oitava; k) desvio da destinação dos recursos prevista no item 3.4; l) descumprimento das obrigações de registro e averbação previstas na Cláusula Sétima.</p>
+  <p class="cl">6.1. A <b>CREDORA</b> poderá declarar esta Cédula vencida antecipadamente, independentemente de aviso extrajudicial, interpelação judicial ou notificação prévia, nas seguintes hipóteses: a) inadimplemento, ${E.de} <b>${EM}</b>, de qualquer obrigação prevista nesta Cédula; b) alienação, promessa de alienação ou constituição de ônus reais sobre os bens dados em garantia, sem a anuência prévia e expressa da CREDORA; c) declaração judicial de insolvência civil, pedido de falência ou de recuperação judicial ou extrajudicial ${E.de} <b>${EM}</b>; d) falecimento, incapacidade total ou pedido de interdição de qualquer ${E.de} <b>${EM}</b>; e) protesto de título ou descumprimento de decisão judicial transitada em julgado; f) inadimplemento ou vencimento antecipado de qualquer outra obrigação financeira ${E.de} <b>${EM}</b>; g) cancelamento ou suspensão de autorizações e licenças ambientais essenciais à atividade; h) alteração da atividade de modo que ${E.plural?'deixem':'deixe'} de atuar como ${E.plural?'produtores rurais':'produtor rural'}; i) prática de ato tendente a anular, revisar ou repudiar esta Cédula; j) falsidade ou inexatidão das declarações prestadas na Cláusula Oitava; k) desvio da destinação dos recursos prevista no item 3.4; l) descumprimento das obrigações de registro e averbação previstas na Cláusula Sétima.</p>
 
   <div class="cl-h">CLÁUSULA SÉTIMA – DA GARANTIA CEDULARMENTE CONSTITUÍDA E DA IDENTIFICAÇÃO DO IMÓVEL</div>
   <p class="cl">7.1. Nos termos do art. 5º da Lei nº 8.929/1994, dos arts. 1.438 e 1.442, II e III, do Código Civil e do art. 6º, I e II, da Lei nº 492/1937, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> ${E.constitui} em favor da <b>CREDORA</b> <b>penhor agrícola de primeiro grau</b> sobre a lavoura e a produção de ${produto} descritas na Cláusula Primeira, pendentes ou em formação, cultivadas na área identificada no item 1.2, como garantia do integral cumprimento da obrigação assumida.</p>
   <p class="cl">7.2. <b>Identificação do imóvel</b>: imóvel rural ${A?'objeto do arrendamento indicado no item 1.2':`de propriedade ${E.de} próprio${E.plural?'s':''} <b>${EM}</b>`}, matriculado sob o nº ${fv('matricula','matrícula')} no Cartório de Registro de Imóveis da Comarca de ${fv('comarca_ri','Comarca')}, situado no Município de ${fv('mun_imovel','Município')}, com área total de ${fv('area_total','ha')} hectares, inscrito no CAR sob o nº ${fv('car','CAR')} e no Cadastro de Imóveis Rurais (CCIR/Incra) sob o nº ${fv('ccir','CCIR')}, cuja área cultivada vinculada a esta Cédula é de ${fv('area_cult','ha')} hectares.</p>
-  <p class="cl">7.3. O produto empenhado permanecerá em poder ${E.de} <b>${EM}</b>, que ${E.assume} a condição de fiel${E.plural?'is':''} depositário${E.plural?'s':''}, sem qualquer remuneração, respondendo pela guarda e conservação dos bens na forma dos arts. 627 a 646 do Código Civil e do art. 7º, § 1º, da Lei nº 8.929/1994.</p>
+  <p class="cl">7.3. O produto empenhado permanecerá em poder ${E.de} <b>${EM}</b>, que ${E.assume} a condição de ${E.plural?'fiéis':'fiel'} depositário${E.plural?'s':''}, sem qualquer remuneração, respondendo pela guarda e conservação dos bens na forma dos arts. 627 a 646 do Código Civil e do art. 7º, § 1º, da Lei nº 8.929/1994.</p>
   <p class="cl">7.4. É expressamente vedada a constituição de qualquer novo ônus ou garantia sobre a lavoura e a produção empenhadas, bem como a emissão de outra Cédula de Produto Rural referenciada à mesma safra e área, sem prévia anuência da <b>CREDORA</b>, sob pena de vencimento antecipado.</p>
-  <p class="cl">7.5. Verificada diminuição ou depreciação da garantia constituída, a <b>CREDORA</b> comunicará o fato ${E.de} <b>${EM}</b>, por escrito, que ${E.plural?'deverão':'deverá'} reforçá-la no prazo de 10 (dez) dias, sob pena de vencimento antecipado.</p>
+  <p class="cl">7.5. Verificada diminuição ou depreciação da garantia constituída, a <b>CREDORA</b> comunicará o fato ${E.ao} <b>${EM}</b>, por escrito, que ${E.plural?'deverão':'deverá'} reforçá-la no prazo de 10 (dez) dias, sob pena de vencimento antecipado.</p>
   <p class="cl">7.6. ${E.artU} <b>${EM}</b> ${E.obriga} a manter a lavoura e o produto empenhados cobertos por seguro agrícola ou instrumento equivalente, indicando a <b>CREDORA</b> como beneficiária da indenização até o limite do seu crédito.</p>
   <p class="cl">7.7. Os bens vinculados a esta Cédula não serão penhorados ou sequestrados por outras dívidas ${E.de} <b>${EM}</b>, cumprindo denunciar a existência desta Cédula às autoridades incumbidas da diligência, nos termos do art. 18 da Lei nº 8.929/1994.</p>
-  <p class="cl">7.8. Sem prejuízo do registro previsto no item 21 do Quadro-Resumo, o penhor agrícola constituído nesta Cláusula será levado a registro no Cartório de Registro de Imóveis da circunscrição em que localizado o imóvel indicado no item 7.2, na forma do art. 12, §§ 1º e 2º, da Lei nº 8.929/1994, no prazo de 3 (três) dias úteis. Para os fins do registro, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b>${emAnu} ${E.plural||A?'obrigam-se':'obriga-se'} a fornecer, às suas expensas, todos os documentos exigidos pelo Oficial de Registro de Imóveis.</p>
+  <p class="cl">7.8. Sem prejuízo do registro previsto no item 21 do Quadro-Resumo, o penhor agrícola constituído nesta Cláusula será levado a registro no Cartório de Registro de Imóveis da circunscrição em que localizado o imóvel indicado no item 7.2, na forma do art. 12, §§ 1º e 2º, da Lei nº 8.929/1994. Para os fins do registro, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b>${emAnu} ${E.plural||A?'obrigam-se':'obriga-se'} a fornecer, às suas expensas, todos os documentos exigidos pelo Oficial de Registro de Imóveis.</p>
 
   <div class="cl-h">CLÁUSULA OITAVA – DAS DECLARAÇÕES ${E.plural?'DOS EMITENTES':'DO EMITENTE'}</div>
-  <p class="cl">8.1. ${E.artU} <b>${EM}</b> ${E.declara}, sob as penas da lei: a) que ${E.possui} legitimação para a emissão desta Cédula, na forma do art. 2º, I, da Lei nº 8.929/1994; b) que são verdadeiras e exatas todas as informações relativas à qualificação, área cultivada, safra, quantidade e qualidade do produto e aos bens oferecidos em garantia, ciente de que declaração falsa caracteriza crime, nos termos do art. 17 da Lei nº 8.929/1994; c) que a lavoura e a produção empenhadas estão livres de ônus e não foram vinculadas a outra CPR, contrato de compra e venda futura ou operação de barter referente à mesma safra e área; d) que não se ${E.plural?'encontram':'encontra'} em insolvência, recuperação judicial ou extrajudicial; e) que o imóvel indicado no item 7.2 possui inscrição regular no CAR e que a atividade observa a legislação ambiental e trabalhista, sem trabalho em condições análogas às de escravo ou infantil; f) que a lavoura e a produção dadas em garantia não são essenciais ao exercício da atividade, para os fins do art. 5º, § 1º, da Lei nº 8.929/1994; g) que ${E.recebe} e ${E.plural?'compreenderam':'compreendeu'} as condições financeiras da operação; h) que ${E.esta} ciente de que o instrumento foi ajustado em caráter irrevogável e irretratável.</p>
+  <p class="cl">8.1. ${E.artU} <b>${EM}</b> ${E.declara}, sob as penas da lei: a) que ${E.possui} legitimação para a emissão desta Cédula, na forma do art. 2º, I, da Lei nº 8.929/1994; b) que são verdadeiras e exatas todas as informações relativas à qualificação, área cultivada, safra, quantidade e qualidade do produto e aos bens oferecidos em garantia, ${E.ciente} de que declaração falsa caracteriza crime, nos termos do art. 17 da Lei nº 8.929/1994; c) que a lavoura e a produção empenhadas estão livres de ônus e não foram vinculadas a outra CPR, contrato de compra e venda futura ou operação de barter referente à mesma safra e área; d) que não se ${E.plural?'encontram':'encontra'} em insolvência, recuperação judicial ou extrajudicial; e) que o imóvel indicado no item 7.2 possui inscrição regular no CAR e que a atividade observa a legislação ambiental e trabalhista, sem trabalho em condições análogas às de escravo ou infantil; f) que a lavoura e a produção dadas em garantia não são essenciais ao exercício da atividade, para os fins do art. 5º, § 1º, da Lei nº 8.929/1994; g) que ${E.recebe} e ${E.plural?'compreenderam':'compreendeu'} as condições financeiras da operação; h) que ${E.esta} ${E.ciente} de que o instrumento foi ajustado em caráter irrevogável e irretratável.</p>
 
   <div class="cl-h">CLÁUSULA NONA – DA FISCALIZAÇÃO</div>
-  <p class="cl">9.1. A <b>CREDORA</b>, por intermédio de pessoa por ela indicada, poderá, sempre que julgar conveniente, vistoriar a lavoura e o produto dados em penhor, bem como verificar a regular aplicação dos recursos, sem que possa ser obstada ${E.de} <b>${EM}</b>${emAnu} ou por terceiros, obrigando-se ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b>${emAnu} a franquear o acesso à área e a apresentar os documentos solicitados.</p>
+  <p class="cl">9.1. A <b>CREDORA</b>, por intermédio de pessoa por ela indicada, poderá, sempre que julgar conveniente, vistoriar a lavoura e o produto dados em penhor, bem como verificar a regular aplicação dos recursos, sem que possa ser obstada ${E.por} <b>${EM}</b>${emAnu} ou por terceiros, obrigando-se ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b>${emAnu} a franquear o acesso à área e a apresentar os documentos solicitados.</p>
 
   <div class="cl-h">CLÁUSULA DÉCIMA – DOS TRIBUTOS E DESPESAS</div>
   <p class="cl">10.1. Os tributos incidentes em decorrência desta Cédula, quando devidos, serão pagos pelo respectivo contribuinte.</p>
-  <p class="cl">10.2. Todas as despesas com registro, depósito, averbação, formalização, cobrança, honorários advocatícios e custas judiciais e extrajudiciais decorrentes desta Cédula serão suportadas exclusivamente ${E.de} <b>${EM}</b>.</p>
+  <p class="cl">10.2. Todas as despesas com registro, depósito, averbação, formalização, cobrança, honorários advocatícios e custas judiciais e extrajudiciais decorrentes desta Cédula serão suportadas exclusivamente ${E.por} <b>${EM}</b>.</p>
 
   <div class="cl-h">CLÁUSULA DÉCIMA PRIMEIRA – DOS ENCARGOS MORATÓRIOS</div>
   <p class="cl">11.1. Não realizado o pagamento na forma da Cláusula Quinta, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> ${E.plural?'incorrerão':'incorrerá'} nos encargos moratórios indicados no item 20 do Quadro-Resumo: (i) juros de mora de 1% ao mês; (ii) correção monetária pela variação positiva do INPC; e (iii) multa não compensatória de 2% (dois por cento), calculados sobre a obrigação inadimplida, desde o vencimento original até a liquidação final.</p>
@@ -1396,6 +1464,36 @@ async function gerarPDF(){
     el.scrollIntoView({block:'center'}); try{el.focus({preventScroll:true});}catch(_){}
     alert('Filial inválida. Informe uma das filiais cadastradas na cooperativa.');
     return;
+  }
+  // Produtividade máxima (sacas por hectare de área cultivada): bloqueia a emissão se ultrapassar.
+  const lim=limiteProdutividade();
+  const areaCult=numPos('area_cult');
+  const qSacas=calcValores().sacas;
+  if(lim && !isNaN(areaCult) && !isNaN(qSacas) && (qSacas - lim*areaCult) > 1e-6){
+    const maxSacas=lim*areaCult;
+    ['qtde_sacas','area_cult'].forEach(id=>document.getElementById(id)?.classList.add('erro'));
+    const el=document.getElementById('qtde_sacas'); if(el){ el.scrollIntoView({block:'center'}); try{el.focus({preventScroll:true});}catch(_){}}
+    alert('Emissão bloqueada — produtividade acima do máximo permitido.\n\n'+
+      '• Quantidade: '+fmtSacas(qSacas)+' sacas\n'+
+      '• Área cultivada: '+fmtSacas(areaCult)+' ha\n'+
+      '• Máximo da cultura: '+maxSacas.toLocaleString('pt-BR',{maximumFractionDigits:2})+' sacas ('+lim+' sc/ha × '+fmtSacas(areaCult)+' ha)\n\n'+
+      'Reduza a quantidade ou ajuste a área cultivada.');
+    return;
+  }
+  // CPR Financeira: o vencimento não pode ultrapassar o prazo máximo da cultura (igual ao prazo de entrega).
+  if(cfg.tipo==='financeira'){
+    const lim=prazoMaximoData(); const mv=/^(\d{4})-(\d{2})-(\d{2})$/.exec(gv('vencimento'));
+    if(lim && mv){
+      const venc=new Date(+mv[1],+mv[2]-1,+mv[3]);
+      if(venc>lim){
+        const el=document.getElementById('vencimento'); if(el){ el.classList.add('erro'); el.scrollIntoView({block:'center'}); try{el.focus({preventScroll:true});}catch(_){}}
+        alert('Emissão bloqueada — a data de vencimento excede o prazo máximo permitido para a cultura.\n\n'+
+          '• Vencimento informado: '+mv[3]+'/'+mv[2]+'/'+mv[1]+'\n'+
+          '• Prazo máximo da cultura: '+prazoEntregaPadrao()+'\n\n'+
+          'Informe uma data de vencimento até o prazo máximo.');
+        return;
+      }
+    }
   }
   const ano=(document.getElementById('data_emissao')?.value||'').slice(0,4);
   const rotulo=(cfg.tipo==='fisica'?'FÍSICA':'FINANCEIRA')+' '+gv('num')+'/'+ano+'/'+gv('filial');
