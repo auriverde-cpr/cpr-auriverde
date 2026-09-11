@@ -265,7 +265,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v4.1 · 11/09/2026';
+const APP_VERSAO='v4.3 · 11/09/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
 const LABELS={
@@ -1054,7 +1054,7 @@ function render(){
     <tr><td class="lab">11. Forma de liquidação</td><td>Exclusivamente <b>FÍSICA</b>, mediante entrega do produto rural, sem liquidação financeira.</td></tr>
     <tr><td class="lab">12. Preço pré-fixado e data de fixação</td><td>${fv('preco_saca','R$ 0,00')} por saca de 60 kg, fixado em ${dataBRField('data_apuracao','data de fixação')}.</td></tr>
     <tr><td class="lab">13. Valor referencial de emissão (bruto)</td><td>${brutoFull}, na forma do art. 2º, § 6º, da Resolução CMN nº 4.870/2020. Sobre este valor bruto incide o FUNRURAL (encargo retido pela CREDORA) de ${funruralSpan}, por ocasião da comercialização do produto rural.</td></tr>
-    <tr><td class="lab">14. Antecipação do preço desembolsada pela CREDORA (líquido)</td><td>${valorFull}, correspondente ao valor bruto (item 13) deduzido o FUNRURAL, na forma da Cláusula Terceira.</td></tr>
+    <tr><td class="lab">14. Antecipação do preço pela credora</td><td>${valorFull}, correspondente ao valor bruto (item 13) deduzido o FUNRURAL, na forma da Cláusula Terceira.</td></tr>
     <tr><td class="lab">15. Data e forma do desembolso da antecipação</td><td>Desembolso em até 10 (dez) dias úteis após o registro do título junto a entidade autorizada pelo Banco Central do Brasil, mediante crédito na conta movimento junto à CREDORA, na forma do item 3.2.</td></tr>
     <tr><td class="lab">16. Garantia</td><td>Penhor agrícola de primeiro grau sobre a lavoura e a produção de ${produto} da área identificada nos itens 7 e 8.</td></tr>
     <tr><td class="lab">17. Encargos moratórios</td><td>Juros de mora de 1% ao mês; correção monetária pela variação positiva do INPC; multa não compensatória de 2% (dois por cento), na forma da Cláusula Sexta.</td></tr>
