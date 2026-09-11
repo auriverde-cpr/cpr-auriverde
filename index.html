@@ -83,6 +83,8 @@
   .f.filial-invalida{border-color:#c0392b !important;box-shadow:0 0 0 3px rgba(192,57,43,.15) !important}   /* filial fora da lista */
   .fld-msg{color:#c0392b;font-size:.78rem;margin-top:4px;min-height:0;line-height:1.3}
   .fld-msg:empty{display:none}
+  .preco-ref{font-size:.72rem;color:var(--muted);margin-top:3px}
+  .preco-ref:empty{display:none}
   /* Botões Sim/Não (Sócio, Segurado especial) */
   .segbtn{display:flex;gap:8px}
   .segbtn button{flex:1;border:1.5px solid var(--line);border-radius:7px;padding:6px 8px;background:var(--field-bg);color:var(--muted);font-weight:600;font-size:.82rem;cursor:pointer;transition:all .12s}
@@ -263,7 +265,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v3.7 · 11/09/2026';
+const APP_VERSAO='v4.1 · 11/09/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
 const LABELS={
@@ -490,7 +492,7 @@ function buildFields(){
   const _ref = fisica ? {valor:'',data:''} : (PRECOS_EPAGRI[cfg.cultura]||{valor:'',data:''});
   h+=`<fieldset><legend>Precificação e valores</legend>
     <div class="grid2">${fisica
-      ? `<div class="fld"><label class="flab">Preço pré-fixado (R$/saca)<span class="hint" tabindex="0" data-tip="Preço unitário pré-fixado da saca de 60 kg, definitivo e irrevogável. Preenchimento livre.">?</span></label><input class="f" id="preco_saca" placeholder="R$ 0,00" oninput="maskMoeda(this);calc()"></div>
+      ? `<div class="fld"><label class="flab">Preço pré-fixado (R$/saca)<span class="hint" tabindex="0" data-tip="Preço unitário pré-fixado da saca de 60 kg, definitivo e irrevogável. Pré-preenchido com o preço mais recente da planilha (editável).">?</span></label><input class="f" id="preco_saca" placeholder="R$ 0,00" oninput="maskMoeda(this);calc()"><div class="preco-ref" id="precoRefMsg"></div></div>
       <div class="fld"><label class="flab">Data de fixação<span class="hint" tabindex="0" data-tip="Data em que o preço foi fixado. Padrão: hoje (pode alterar).">?</span></label><input class="f" type="date" id="data_apuracao" value="${hojeISO}"></div>`
       : `<div class="fld"><label class="flab">Preço de referência (R$/saca)<a class="hint" href="https://cepa.epagri.sc.gov.br/index.php/mercado-agricola/" target="_blank" rel="noopener" data-tip="Preço pré-preenchido pela referência EPAGRI/Cepa — praça Extremo Oeste (valor mais comum da saca de 60 kg). Confira e ajuste se houver divulgação mais recente. Clique para abrir a página de preços (PREÇOS DIÁRIOS) em nova guia.">?</a></label><input class="f" id="preco_saca" value="${_ref.valor}" placeholder="R$ 0,00" oninput="maskMoeda(this);calc()"></div>
       <div class="fld"><label class="flab">Data de apuração</label><input class="f" id="data_apuracao" value="${_ref.data}" placeholder="ex.: 15/08/2026"></div>`}</div>
@@ -743,6 +745,27 @@ async function preencherProximoNumero(forcar){
     numEl.classList.remove('buscando');
     if(aviso) aviso.classList.add('hidden');
   }
+}
+/* ===== Preço pré-fixado sugerido (CPR Física) — buscado da aba "Preços" da planilha ===== */
+let PRECOS_FISICA_CACHE=null;
+async function carregarPrecosFisica(){
+  if(PRECOS_FISICA_CACHE) return PRECOS_FISICA_CACHE;
+  if(!NUMERACAO_URL) return null;
+  try{ const r=await fetch(NUMERACAO_URL+'?action=precos',{cache:'no-store'}); const j=await r.json(); if(j&&j.ok&&j.precos) PRECOS_FISICA_CACHE=j.precos; }catch(e){}
+  return PRECOS_FISICA_CACHE;
+}
+function chavePrecoFisica(){ return cfg.cultura==='soja' ? ('soja_'+(cfg.safra_tipo||'safra')) : cfg.cultura; }
+/* Pré-preenche o preço pré-fixado da Física com o preço MAIS RECENTE da planilha (não sobrescreve o
+   que o operador digitar) e mostra a data de referência daquele preço. Continua editável. */
+async function sugerirPrecoFisica(){
+  if(cfg.tipo!=='fisica') return;
+  const el=document.getElementById('preco_saca'), msg=document.getElementById('precoRefMsg');
+  if(!el) return;
+  const m=await carregarPrecosFisica(); const info=m?m[chavePrecoFisica()]:null;
+  if(msg) msg.textContent = (info && info.preco && info.data) ? ('Preço de referência de '+info.data+' (mais recente cadastrado).') : '';
+  if(el.value.trim()) return;                       // não sobrescreve o preço digitado
+  const n=(info && info.preco)?parseMoeda(info.preco):NaN;
+  if(!isNaN(n)){ el.value=fmtBRL(n); calc(); }
 }
 /* Registra a emissão; devolve o número definitivo (a planilha ajusta em caso de colisão).
    reemissao=true: mantém o número informado e grava a linha marcada como "Reemissão". */
@@ -1031,8 +1054,8 @@ function render(){
     <tr><td class="lab">11. Forma de liquidação</td><td>Exclusivamente <b>FÍSICA</b>, mediante entrega do produto rural, sem liquidação financeira.</td></tr>
     <tr><td class="lab">12. Preço pré-fixado e data de fixação</td><td>${fv('preco_saca','R$ 0,00')} por saca de 60 kg, fixado em ${dataBRField('data_apuracao','data de fixação')}.</td></tr>
     <tr><td class="lab">13. Valor referencial de emissão (bruto)</td><td>${brutoFull}, na forma do art. 2º, § 6º, da Resolução CMN nº 4.870/2020. Sobre este valor bruto incide o FUNRURAL (encargo retido pela CREDORA) de ${funruralSpan}, por ocasião da comercialização do produto rural.</td></tr>
-    <tr><td class="lab">14. Antecipação do preço paga pela CREDORA (líquido)</td><td>${valorFull}, correspondente ao valor bruto (item 13) deduzido o FUNRURAL, na forma da Cláusula Terceira.</td></tr>
-    <tr><td class="lab">15. Data e forma do pagamento da antecipação</td><td>Pagamento em até 10 (dez) dias úteis após o registro do título junto a entidade autorizada pelo Banco Central do Brasil, mediante crédito na conta movimento junto à CREDORA, na forma do item 3.2.</td></tr>
+    <tr><td class="lab">14. Antecipação do preço desembolsada pela CREDORA (líquido)</td><td>${valorFull}, correspondente ao valor bruto (item 13) deduzido o FUNRURAL, na forma da Cláusula Terceira.</td></tr>
+    <tr><td class="lab">15. Data e forma do desembolso da antecipação</td><td>Desembolso em até 10 (dez) dias úteis após o registro do título junto a entidade autorizada pelo Banco Central do Brasil, mediante crédito na conta movimento junto à CREDORA, na forma do item 3.2.</td></tr>
     <tr><td class="lab">16. Garantia</td><td>Penhor agrícola de primeiro grau sobre a lavoura e a produção de ${produto} da área identificada nos itens 7 e 8.</td></tr>
     <tr><td class="lab">17. Encargos moratórios</td><td>Juros de mora de 1% ao mês; correção monetária pela variação positiva do INPC; multa não compensatória de 2% (dois por cento), na forma da Cláusula Sexta.</td></tr>
     <tr><td class="lab">18. Registro do título</td><td>Entidade autorizada pelo Banco Central do Brasil, em até 30 (trinta) dias úteis da emissão.</td></tr>
@@ -1079,6 +1102,7 @@ function render(){
   <p class="cl">6.2. <b>Execução para entrega</b>: verificado o inadimplemento, a <b>CREDORA</b> poderá promover a execução para entrega de coisa incerta, com a consequente busca e apreensão do produto, nos termos do art. 15 da Lei nº 8.929/1994 e dos arts. 811 a 813 do Código de Processo Civil, constituindo esta Cédula título executivo extrajudicial, líquido e certo quanto à quantidade e à qualidade, na forma do art. 4º da Lei nº 8.929/1994 e do art. 784, III e XII, do Código de Processo Civil.</p>
   <p class="cl">6.3. <b>Conversão em perdas e danos</b>: alternativamente, a critério exclusivo da <b>CREDORA</b>, a obrigação de entrega não cumprida poderá ser convertida em pagamento em dinheiro, correspondente ao valor da quantidade não entregue, valorada na forma do item 2.3, acrescido dos encargos moratórios previstos no item 6.4 e das perdas e danos apuradas, nos termos dos arts. 813 e 816 do Código de Processo Civil e do art. 947 do Código Civil, sem prejuízo da restituição da antecipação do preço correspondente ao produto não entregue.</p>
   <p class="cl">6.4. <b>Encargos moratórios</b>: sobre o valor apurado na forma do item 6.3 incidirão os encargos indicados no item 17 do Quadro-Resumo: (i) juros de mora de 1% ao mês; (ii) correção monetária pela variação positiva do INPC; e (iii) multa não compensatória de 2% (dois por cento), calculados desde a data do inadimplemento até a liquidação final.</p>
+  <p class="cl">6.5. <b>Cláusula penal compensatória</b>: caso ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> não ${E.plural?'realizem':'realize'} a entrega do produto rural objeto desta Cédula, no todo ou em parte, na quantidade, qualidade e prazo estabelecidos neste instrumento, ${E.plural?'ficarão obrigados':(E.fem?'ficará obrigada':'ficará obrigado')} a pagar à <b>CREDORA</b>, de pleno direito e independentemente de aviso, notificação ou interpelação judicial ou extrajudicial, cláusula penal compensatória equivalente a 30% (trinta por cento) do valor do débito apurado. Na hipótese de entrega parcial, a cláusula penal incidirá exclusivamente sobre o valor correspondente à quantidade não entregue.</p>
 
   <div class="cl-h">CLÁUSULA SÉTIMA – DO VENCIMENTO ANTECIPADO</div>
   <p class="cl">7.1. A <b>CREDORA</b> poderá declarar esta Cédula vencida antecipadamente, tornando imediatamente exigível a entrega da totalidade do produto ou, à sua escolha, o valor equivalente apurado na forma do item 2.3, independentemente de aviso extrajudicial, interpelação judicial ou notificação prévia, nas seguintes hipóteses: a) inadimplemento, ${E.de} <b>${EM}</b>, de qualquer obrigação prevista nesta Cédula; b) alienação, promessa de alienação ou constituição de ônus reais sobre os bens dados em garantia, sem a anuência prévia e expressa da CREDORA; c) declaração judicial de insolvência civil, pedido de falência ou de recuperação judicial ou extrajudicial ${E.de} <b>${EM}</b>; d) falecimento, incapacidade total ou pedido de interdição de qualquer ${E.de} <b>${EM}</b>; e) protesto de título ou descumprimento de decisão judicial transitada em julgado; f) inadimplemento ou vencimento antecipado de qualquer outra obrigação ${E.de} <b>${EM}</b> perante a CREDORA; g) cancelamento ou suspensão de autorizações e licenças ambientais essenciais à atividade; h) alteração da atividade de modo que ${E.plural?'deixem':'deixe'} de atuar como ${E.plural?'produtores rurais':'produtor rural'}; i) prática de ato tendente a anular, revisar ou repudiar esta Cédula; j) falsidade ou inexatidão das declarações prestadas na Cláusula Nona; k) descumprimento das obrigações de registro e averbação previstas na Cláusula Oitava.</p>
@@ -1297,6 +1321,7 @@ function iniciar(){
   validarFilial();
   if(filialValida(gv('filial'))) preencherGerente();
   if(!modoReemissao) preencherProximoNumero();   // preenche o número (se vazio) da filial/tipo atuais
+  if(cfg.tipo==='fisica') sugerirPrecoFisica();   // pré-preenche o preço pré-fixado (se vazio) da aba "Preços"
 }
 function voltarConfig(){
   document.getElementById('editor').classList.add('hidden');
@@ -1332,7 +1357,7 @@ async function aplicarDados(dados){
   Object.assign(cfg, dados.config);
   formData = dados.campos || {};
   baseCalc = (dados.baseCalc==='valor') ? 'valor' : 'sacas';   // preserva o último campo informado do PDF (padrão: quantidade)
-  delete formData.preco_saca; delete formData.data_apuracao;   // preço segue a referência EPAGRI atual da cultura
+  if(cfg.tipo!=='fisica'){ delete formData.preco_saca; delete formData.data_apuracao; }   // Financeira: preço segue a referência EPAGRI atual. Física: mantém o preço pré-fixado do PDF.
 
   // Documento importado com número: pergunta se é REEMISSÃO (mesmo número) ou NOVA CPR (número novo).
   const numImportado=(formData.num||'').toString().trim();
