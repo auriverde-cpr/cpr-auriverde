@@ -265,7 +265,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v4.3 · 11/09/2026';
+const APP_VERSAO='v4.6 · 18/09/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
 const LABELS={
@@ -629,7 +629,7 @@ function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
    omite o número quando vazio e o bairro quando vazio. */
 function enderecoGerenteTxt(){
   let s='residente e domiciliado na '+fv('end_rua','logradouro');
-  const num=gv('end_num'); if(num) s+=', nº '+esc(num);
+  const num=gv('end_num'); s+= num ? (', nº '+esc(num)) : ', S/N';
   const bairro=gv('end_bairro'); if(bairro) s+=', Bairro '+esc(bairro);
   s+=', no Município de '+fv('end_municipio','Município/UF');
   return s;
@@ -673,12 +673,24 @@ function numCPR(){return `${fv('num','nº')}/${anoTxt()}/${fv('filial','filial')
    Preenche automaticamente os dados da CREDORA a partir da filial informada.
    Atualize este objeto quando a planilha Dados_Gerentes mudar. Filiais sem gerente ficam em branco. */
 const GERENTES = {
-  '1':  {nome:'LEANDRO DECOSTA',        cpf:'080.712.449-45', endereco:'Av. Sete de Setembro',                       numero:'1195', bairro:'',                municipio:'Maravilha/SC'},
-  '73': {nome:'LEANDRO DECOSTA',        cpf:'080.712.449-45', endereco:'Av. Sete de Setembro',                       numero:'1195', bairro:'',                municipio:'Maravilha/SC'},
-  '41': {nome:'DARLEI LUVIZA',          cpf:'047.925.519-94', endereco:'Rua Seis de Janeiro',                        numero:'',     bairro:'Sabadin',         municipio:'Iraceminha/SC'},
-  '42': {nome:'DARLEI LUVIZA',          cpf:'047.925.519-94', endereco:'Rua Seis de Janeiro',                        numero:'',     bairro:'Sabadin',         municipio:'Iraceminha/SC'},
-  '49': {nome:'ARLAN ANTUNES DE BRIDA', cpf:'041.681.249-08', endereco:'Estrada Geral, Rio Rocinha, Rocinha de Cima', numero:'',    bairro:'',                municipio:'Lauro Muller/SC'},
-  '71': {nome:'REIMAR CAVALLI',         cpf:'001.730.930-19', endereco:'Rua Hugo Kanitz',                            numero:'486',  bairro:'Ildo Meneghetti', municipio:'Três Passos/RS'}
+  '1':  {nome:'LEANDRO DECOSTA',           cpf:'080.712.449-45', endereco:'Av. Sete de Setembro',                          numero:'1195', bairro:'',                municipio:'Maravilha/SC'},
+  '73': {nome:'LEANDRO DECOSTA',           cpf:'080.712.449-45', endereco:'Av. Sete de Setembro',                          numero:'1195', bairro:'',                municipio:'Maravilha/SC'},
+  '10': {nome:'MARCELO CONTE',             cpf:'039.965.779-74', endereco:'Linha Barra Bonita',                            numero:'',     bairro:'Interior',        municipio:'São Miguel da Boa Vista/SC'},
+  '14': {nome:'CLOVES RITTER',             cpf:'039.323.929-22', endereco:'Rua Lindolfo Drews',                            numero:'452',  bairro:'',                municipio:'Cunha Porã/SC'},
+  '58': {nome:'CLOVES RITTER',             cpf:'039.323.929-22', endereco:'Rua Lindolfo Drews',                            numero:'452',  bairro:'',                municipio:'Cunha Porã/SC'},
+  '90': {nome:'CLOVES RITTER',             cpf:'039.323.929-22', endereco:'Rua Lindolfo Drews',                            numero:'452',  bairro:'',                municipio:'Cunha Porã/SC'},
+  '15': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'',                municipio:'São Carlos/SC'},
+  '19': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'',                municipio:'São Carlos/SC'},
+  '37': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'',                municipio:'São Carlos/SC'},
+  '17': {nome:'SANDRO CARLOS KRÖLOF',      cpf:'016.281.329-57', endereco:'Rua dos Eucaliptos',                            numero:'308',  bairro:'',                municipio:'Cunhataí/SC'},
+  '26': {nome:'WALTER FERRARI',            cpf:'074.328.749-56', endereco:'Av. Padre Antonio, Ed. Vento Minuano, Apto 505', numero:'940',  bairro:'Centro',          municipio:'Maravilha/SC'},
+  '46': {nome:'WALTER FERRARI',            cpf:'074.328.749-56', endereco:'Av. Padre Antonio, Ed. Vento Minuano, Apto 505', numero:'940',  bairro:'Centro',          municipio:'Maravilha/SC'},
+  '41': {nome:'DARLEI LUVIZA',             cpf:'047.925.519-94', endereco:'Rua Seis de Janeiro',                           numero:'',     bairro:'Sabadin',         municipio:'Iraceminha/SC'},
+  '42': {nome:'DARLEI LUVIZA',             cpf:'047.925.519-94', endereco:'Rua Seis de Janeiro',                           numero:'',     bairro:'Sabadin',         municipio:'Iraceminha/SC'},
+  '48': {nome:'ALESSANDRO BEDIN',          cpf:'060.868.769-32', endereco:'Rua Fábio Junior Zanella',                      numero:'251',  bairro:'São José',        municipio:'Maravilha/SC'},
+  '72': {nome:'ALESSANDRO BEDIN',          cpf:'060.868.769-32', endereco:'Rua Fábio Junior Zanella',                      numero:'251',  bairro:'São José',        municipio:'Maravilha/SC'},
+  '49': {nome:'ARLAN ANTUNES DE BRIDA',    cpf:'041.681.249-08', endereco:'Estrada Geral, Rio Rocinha',                    numero:'',     bairro:'Rocinha de Cima', municipio:'Lauro Muller/SC'},
+  '71': {nome:'REIMAR CAVALLI',            cpf:'001.730.930-19', endereco:'Rua Hugo Kanitz',                               numero:'486',  bairro:'Ildo Meneghetti', municipio:'Três Passos/RS'}
 };
 /* Todas as filiais válidas (mesmo as que ainda não têm gerente cadastrado). */
 const FILIAIS = ['1','10','14','15','17','19','25','26','37','41','42','43','44','45','46','48','49','51','58','60','63','67','68','69','71','72','73','90'];
