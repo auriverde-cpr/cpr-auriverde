@@ -265,7 +265,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v4.6 · 18/09/2026';
+const APP_VERSAO='v4.7 · 18/09/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
 const LABELS={
@@ -325,7 +325,10 @@ document.querySelectorAll('input[type=radio]').forEach(r=>{
       // preço de referência acompanha a cultura: descarta o salvo p/ reaplicar a referência atual
       delete formData.preco_saca; delete formData.data_apuracao;
     }
-    if(r.name==='tipo'){ delete formData.num; }   // física e financeira têm numeração própria -> recarregar
+    if(r.name==='tipo'){
+      delete formData.num;                                    // numeração própria por tipo -> recarrega
+      delete formData.preco_saca; delete formData.data_apuracao;  // preço muda de regra (Física livre × Financeira EPAGRI) -> reaplica
+    }
     chips();validate();
   });
 });
