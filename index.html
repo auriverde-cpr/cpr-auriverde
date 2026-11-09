@@ -216,33 +216,12 @@
             <div class="opt"><input type="radio" name="safra_tipo" id="sf_f" value="safrinha"><label for="sf_f">Safrinha</label></div>
           </div>
         </div></div>
-      <div class="qrow"><div class="q"><span class="n">3</span> Estado civil do emitente principal</div>
-        <div class="opts">
-          <div class="opt"><input type="radio" name="ecivil" id="ec_s" value="solteiro"><label for="ec_s">Solteiro(a)</label></div>
-          <div class="opt"><input type="radio" name="ecivil" id="ec_c" value="casado"><label for="ec_c">Casado(a)</label></div>
-        </div></div>
-      <div class="qrow"><div class="q"><span class="n">4</span> Gênero do emitente principal</div>
-        <div class="opts">
-          <div class="opt"><input type="radio" name="sexo" id="sx_h" value="h"><label for="sx_h">Masculino</label></div>
-          <div class="opt"><input type="radio" name="sexo" id="sx_m" value="m"><label for="sx_m">Feminino</label></div>
-        </div></div>
-      <div class="qrow"><div class="q"><span class="n">5</span> Possui anuente? <small style="font-weight:400;color:var(--muted)">(arrendador/proprietário do imóvel)</small></div>
+      <div class="qrow"><div class="q"><span class="n">3</span> Possui anuente? <small style="font-weight:400;color:var(--muted)">(arrendador/proprietário do imóvel)</small></div>
         <div class="opts">
           <div class="opt"><input type="radio" name="anuente" id="an_n" value="nao"><label for="an_n">Não</label></div>
           <div class="opt"><input type="radio" name="anuente" id="an_s" value="sim"><label for="an_s">Sim</label></div>
         </div>
-        <div id="anuenteExtra" class="conditional hidden">
-          <div class="q" style="margin-top:6px"><span class="n">5a</span> Estado civil do anuente</div>
-          <div class="opts">
-            <div class="opt"><input type="radio" name="an_ecivil" id="anec_s" value="solteiro"><label for="anec_s">Solteiro(a)</label></div>
-            <div class="opt"><input type="radio" name="an_ecivil" id="anec_c" value="casado"><label for="anec_c">Casado(a)</label></div>
-          </div>
-          <div class="q" style="margin-top:14px"><span class="n">5b</span> Gênero do anuente principal</div>
-          <div class="opts">
-            <div class="opt"><input type="radio" name="an_sexo" id="ansx_h" value="h"><label for="ansx_h">Masculino</label></div>
-            <div class="opt"><input type="radio" name="an_sexo" id="ansx_m" value="m"><label for="ansx_m">Feminino</label></div>
-          </div>
-        </div>
+        <div class="hint-inline" style="margin-top:8px;font-size:.8rem;color:var(--muted);line-height:1.4">O <b>estado civil</b> e o <b>gênero</b> de cada pessoa (emitente, anuente e condôminos) são informados na próxima tela, junto da qualificação.</div>
       </div>
     </div>
     <div class="config-actions">
@@ -276,9 +255,9 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v5.9 · 09/11/2026';
+const APP_VERSAO='v6.0 · 09/11/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
-const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
+const cfg={tipo:null,cultura:null,safra_tipo:null,anuente:null};
 const LABELS={
   tipo:{fisica:"Física",financeira:"Financeira"},cultura:{soja:"Soja",milho:"Milho",trigo:"Trigo"},
   safra_tipo:{safra:"Safra",safrinha:"Safrinha"},
@@ -322,12 +301,6 @@ let PRECOS_EPAGRI={
 document.querySelectorAll('input[type=radio]').forEach(r=>{
   r.addEventListener('change',()=>{
     cfg[r.name]=r.value;
-    if(r.name==='anuente'){
-      const ex=document.getElementById('anuenteExtra');
-      if(r.value==='sim') ex.classList.remove('hidden');
-      else{ex.classList.add('hidden');cfg.an_ecivil=null;cfg.an_sexo=null;
-        document.querySelectorAll('input[name=an_ecivil],input[name=an_sexo]').forEach(x=>x.checked=false);}
-    }
     if(r.name==='cultura'){
       const sf=document.getElementById('safraExtra');
       if(r.value==='soja'||r.value==='milho') sf.classList.remove('hidden');
@@ -348,11 +321,10 @@ document.querySelectorAll('input[type=radio]').forEach(r=>{
   });
 });
 function chips(){const c=document.getElementById('chips');c.innerHTML='';
-  ['tipo','cultura','safra_tipo','ecivil','sexo','anuente','an_ecivil','an_sexo'].forEach(k=>{
+  ['tipo','cultura','safra_tipo','anuente'].forEach(k=>{
     if(cfg[k]){const s=document.createElement('span');s.className='chip';s.textContent=LABELS[k][cfg[k]];c.appendChild(s);}});}
-function validate(){let ok=cfg.tipo&&cfg.cultura&&cfg.ecivil&&cfg.sexo&&cfg.anuente;
+function validate(){let ok=cfg.tipo&&cfg.cultura&&cfg.anuente;
   if(cfg.cultura==='soja'||cfg.cultura==='milho')ok=ok&&cfg.safra_tipo;
-  if(cfg.anuente==='sim')ok=ok&&cfg.an_ecivil&&cfg.an_sexo;
   document.getElementById('btnStart').disabled=!ok;}
 
 /* ===================== MOTOR DE FLEXÃO ===================== */
@@ -504,8 +476,29 @@ function toggleCondConjuge(i){ const w=document.getElementById('cond'+i+'_conjWr
 function syncCondConjuge(){ for(let i=1;i<=nCondominos;i++) toggleCondConjuge(i); }
 
 /* ===================== CAMPOS DINÂMICOS ===================== */
+/* Selects reutilizáveis de estado civil e gênero (usados por emitente, anuente e condôminos). */
+function selEstadoCivil(id,onchange){
+  return `<select class="f" id="${id}"${onchange?` onchange="${onchange}"`:''}>
+    <option value="">selecione…</option>
+    <option value="solteiro">Solteiro(a)</option>
+    <option value="casado">Casado(a)</option>
+    <option value="viuvo">Viúvo(a)</option>
+    <option value="divorciado">Divorciado(a)</option>
+  </select>`;
+}
+function selGenero(id){
+  return `<select class="f" id="${id}">
+    <option value="">selecione…</option>
+    <option value="h">Masculino</option>
+    <option value="m">Feminino</option>
+  </select>`;
+}
+/* Reconstrói o formulário preservando o que já foi digitado (usado quando o estado civil muda a estrutura). */
+function rebuildFields(){ saveFormData(); buildFields(); calc(); render(); }
 function buildFields(){
-  const E=flex(cfg.sexo,cfg.ecivil,'E');
+  // Estado civil e gênero do emitente/anuente agora são campos do formulário (lidos do formData p/ montar a estrutura).
+  const ecEmit=formData['ec_emit']||'', sxEmit=formData['sx_emit']||'';
+  const ecAnu =formData['ec_anu'] ||'', sxAnu =formData['sx_anu'] ||'';
   const _hoje=new Date();
   const _pad=n=>String(n).padStart(2,'0');
   const hojeISO=`${_hoje.getFullYear()}-${_pad(_hoje.getMonth()+1)}-${_pad(_hoje.getDate())}`;
@@ -520,10 +513,19 @@ function buildFields(){
         </div></div>
       <div class="fld"><label class="flab">Data de emissão</label><input class="f" type="date" id="data_emissao" value="${hojeISO}"></div></div></fieldset>`;
 
-  h+=`<fieldset><legend>${E.plural?'1º Emitente':'Emitente'}</legend>
+  h+=`<fieldset><legend>${ecEmit==='casado'?'1º Emitente':'Emitente'}</legend>
     <div class="fld full"><label class="flab">Nome completo</label><input class="f" id="nome1" placeholder="nome"></div>
-    <div class="grid2">
-      ${cfg.ecivil==='casado'?`<div class="fld"><label class="flab">Regime de bens</label>
+    <div class="grid3">
+      <div class="fld"><label class="flab">Estado civil</label>${selEstadoCivil('ec_emit','rebuildFields()')}</div>
+      <div class="fld"><label class="flab">Gênero</label>${selGenero('sx_emit')}</div>
+      <div class="fld"><label class="flab">Profissão</label><input class="f" id="prof1" value="agropecuarista" placeholder="ex.: agropecuarista"></div>
+    </div>
+    <div class="grid3">
+      <div class="fld"><label class="flab">RG</label><input class="f" id="rg1" placeholder="RG"></div>
+      <div class="fld"><label class="flab">CPF</label><input class="f" id="cpf1" inputmode="numeric" placeholder="000.000.000-00"></div>
+      <div class="fld"><label class="flab">Inscrição estadual</label><input class="f" id="ie1" placeholder="IE produtor rural"></div>
+    </div>
+    ${ecEmit==='casado'?`<div class="fld full" style="margin-top:4px"><label class="flab">Regime de bens</label>
         <select class="f" id="regime" onchange="toggleRegimeOutro()">
           <option value="">selecione o regime...</option>
           <option>comunhão parcial de bens</option>
@@ -532,11 +534,6 @@ function buildFields(){
           <option value="outro">outro (especificar)</option>
         </select>
         <input class="f" id="regime_outro" placeholder="especifique o regime" style="display:none;margin-top:6px"></div>`:''}
-      <div class="fld"><label class="flab">Profissão</label><input class="f" id="prof1" value="agropecuarista" placeholder="ex.: agropecuarista"></div>
-      <div class="fld"><label class="flab">RG</label><input class="f" id="rg1" placeholder="RG"></div>
-      <div class="fld"><label class="flab">CPF</label><input class="f" id="cpf1" inputmode="numeric" placeholder="000.000.000-00"></div>
-      <div class="fld"><label class="flab">Inscrição estadual</label><input class="f" id="ie1" placeholder="IE produtor rural"></div>
-    </div>
     ${cfg.tipo==='fisica'?`<div class="grid2" style="margin-top:8px">
       <div class="fld full"><label class="flab">Sócio<span class="hint" tabindex="0" data-tip="Emitente é sócio/cooperado da Cooperativa Regional Auriverde? Como verificar? SES1400 (HS) - Parâmetros Gerais">?</span></label>
         <input type="text" class="f seg-hidden" id="socio" tabindex="-1" aria-hidden="true">
@@ -546,7 +543,7 @@ function buildFields(){
         <div class="segbtn seg-grid3" data-for="segurado_especial"><button type="button" data-v="Sim">Sim</button><button type="button" data-v="Não">Não</button><button type="button" data-v="Empregador Rural">Empregador Rural</button></div></div>
     </div>`:''}</fieldset>`;
 
-  if(cfg.ecivil==='casado'){
+  if(ecEmit==='casado'){
     h+=`<fieldset><legend>2º Emitente (cônjuge)</legend>
       <div class="fld full"><label class="flab">Nome completo</label><input class="f" id="nome2" placeholder="nome do cônjuge"></div>
       <div class="grid3"><div class="fld"><label class="flab">Profissão</label><input class="f" id="prof2" value="agropecuarista" placeholder="ex.: agropecuarista"></div>
@@ -573,13 +570,15 @@ function buildFields(){
 
   // Anuente
   if(cfg.anuente==='sim'){
-    const A=flex(cfg.an_sexo,cfg.an_ecivil,'A');
-    h+=`<fieldset><legend>${A.plural?'1º Anuente (proprietário/arrendador)':'Anuente (proprietário/arrendador)'}</legend>
+    h+=`<fieldset><legend>${ecAnu==='casado'?'1º Anuente (proprietário/arrendador)':'Anuente (proprietário/arrendador)'}</legend>
       <div class="fld full"><label class="flab">Nome completo</label><input class="f" id="an_nome1" placeholder="nome do anuente"></div>
-      <div class="grid3"><div class="fld"><label class="flab">RG</label><input class="f" id="an_rg1" placeholder="RG"></div>
-      <div class="fld"><label class="flab">CPF</label><input class="f" id="an_cpf1" inputmode="numeric" placeholder="000.000.000-00"></div>
-      <div class="fld"><label class="flab">Profissão</label><input class="f" id="an_prof1" value="agropecuarista" placeholder="ex.: agropecuarista"></div></div>`;
-    if(cfg.an_ecivil==='casado'){
+      <div class="grid3">
+      <div class="fld"><label class="flab">Estado civil</label>${selEstadoCivil('ec_anu','rebuildFields()')}</div>
+      <div class="fld"><label class="flab">Gênero</label>${selGenero('sx_anu')}</div>
+      <div class="fld"><label class="flab">Profissão</label><input class="f" id="an_prof1" value="agropecuarista" placeholder="ex.: agropecuarista"></div></div>
+      <div class="grid2"><div class="fld"><label class="flab">RG</label><input class="f" id="an_rg1" placeholder="RG"></div>
+      <div class="fld"><label class="flab">CPF</label><input class="f" id="an_cpf1" inputmode="numeric" placeholder="000.000.000-00"></div></div>`;
+    if(ecAnu==='casado'){
       h+=`<div class="fld full" style="margin-top:8px"><label class="flab">Nome do cônjuge do anuente</label><input class="f" id="an_nome2" placeholder="nome do cônjuge"></div>
         <div class="grid3"><div class="fld"><label class="flab">RG</label><input class="f" id="an_rg2" placeholder="RG"></div>
         <div class="fld"><label class="flab">CPF</label><input class="f" id="an_cpf2" inputmode="numeric" placeholder="000.000.000-00"></div>
@@ -749,6 +748,19 @@ const gv=id=>(document.getElementById(id)?.value||'').trim();
 function fv(id,guia){const v=gv(id);return v?`<span class="fillv">${esc(v)}</span>`:`<span class="emptyv">[${guia}]</span>`;}
 /* fv em minúscula (profissão etc.) */
 function fvLc(id,guia){const v=gv(id);return v?`<span class="fillv lc">${esc(v)}</span>`:`<span class="emptyv">[${guia}]</span>`;}
+/* Palavra do estado civil com gênero (solteiro/casado/viúvo/divorciado). */
+function civilTxt(ecivil,fem){
+  if(ecivil==='solteiro')   return fem?'solteira':'solteiro';
+  if(ecivil==='casado')     return fem?'casada':'casado';
+  if(ecivil==='viuvo')      return fem?'viúva':'viúvo';
+  if(ecivil==='divorciado') return fem?'divorciada':'divorciado';
+  return '';
+}
+/* Estado civil (por gênero) de um campo do formulário, como span (placeholder se vazio). */
+function fvCivil(ecivilId,fem){
+  const w=civilTxt(gv(ecivilId),fem);
+  return w?`<span class="fillv lc">${w}</span>`:`<span class="emptyv">[estado civil]</span>`;
+}
 function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 /* Endereço do representante da CREDORA (gerente): sem "Rua" fixo (o logradouro já vem completo);
    omite o número quando vazio e o bairro quando vazio. */
@@ -789,9 +801,10 @@ function condominoCoPropTxt(itemNum){
    em condomínio (com anuente). O vínculo é inferido do campo Anuente (sim = arrendado). */
 function condominosClausula(num){
   const cs=getCondominos(); if(cs.length===0) return '';
-  const E=flex(cfg.sexo,cfg.ecivil,'E');
+  const ecEmit=gv('ec_emit'),sxEmit=gv('sx_emit'),ecAnu=gv('ec_anu'),sxAnu=gv('sx_anu');
+  const E=flex(sxEmit,ecEmit,'E');
   const temAnu = cfg.anuente==='sim';
-  const A = temAnu?flex(cfg.an_sexo,cfg.an_ecivil,'A'):null;
+  const A = temAnu?flex(sxAnu,ecAnu,'A'):null;
   const plural = cs.length>1 || cs.some(c=>c.ecivil==='casado');   // mais de uma pessoa anuindo (inclui cônjuge)
   const umFem = cs.length===1 && cs[0].sexo==='m' && cs[0].ecivil!=='casado';
   const lista = cs.length===1 ? qualificaCondomino(cs[0]) : cs.map((c,i)=>`(${i+1}) ${qualificaCondomino(c)}`).join('; ');
@@ -1207,14 +1220,15 @@ function sigNomeCPF(papel,nome,cpf){
   return `<span class="sig-role">${papel}</span><b>${nome?esc(nome):'____________'}</b><br>CPF: ${cpf?esc(cpf):'____________'}`;
 }
 function blocoAssinaturas(){
+  const ecEmit=gv('ec_emit'),ecAnu=gv('ec_anu');
   let s='';
-  if(cfg.ecivil==='casado'){
+  if(ecEmit==='casado'){
     s+=`<div class="sig-line sig-flex"><div><div class="sig-rule"></div>${sigNomeCPF('EMITENTE',gv('nome1'),gv('cpf1'))}</div><div><div class="sig-rule"></div>${sigNomeCPF('EMITENTE',gv('nome2'),gv('cpf2'))}</div></div>`;
   } else {
     s+=`<div class="sig-line" style="text-align:center"><div class="sig-rule" style="width:60%;margin:0 auto"></div>${sigNomeCPF('EMITENTE',gv('nome1'),gv('cpf1'))}</div>`;
   }
   if(cfg.anuente==='sim'){
-    if(cfg.an_ecivil==='casado'){
+    if(ecAnu==='casado'){
       s+=`<div class="sig-line sig-flex"><div><div class="sig-rule"></div>${sigNomeCPF('ANUENTE',gv('an_nome1'),gv('an_cpf1'))}</div><div><div class="sig-rule"></div>${sigNomeCPF('ANUENTE',gv('an_nome2'),gv('an_cpf2'))}</div></div>`;
     } else {
       s+=`<div class="sig-line" style="text-align:center"><div class="sig-rule" style="width:60%;margin:0 auto"></div>${sigNomeCPF('ANUENTE',gv('an_nome1'),gv('an_cpf1'))}</div>`;
@@ -1234,8 +1248,9 @@ function blocoAssinaturas(){
 /* ===================== RENDER (CPR FÍSICA — texto integral) ===================== */
 function render(){
   if(cfg.tipo==='financeira'){ renderFinanceira(); return; }
-  const E=flex(cfg.sexo,cfg.ecivil,'E');
-  const A=cfg.anuente==='sim'?flex(cfg.an_sexo,cfg.an_ecivil,'A'):null;
+  const ecEmit=gv('ec_emit'),sxEmit=gv('sx_emit'),ecAnu=gv('ec_anu'),sxAnu=gv('sx_anu');
+  const E=flex(sxEmit,ecEmit,'E');
+  const A=cfg.anuente==='sim'?flex(sxAnu,ecAnu,'A'):null;
   const produto = cfg.cultura==='milho'?'milho':(cfg.cultura==='trigo'?'trigo':'soja');
   const prodFem = (cfg.cultura==='soja');   // soja = feminino; milho/trigo = masculino
   const valorFull = (valorDisplay()?`<span class="fillv">${esc(valorDisplay())}</span>`:`<span class="emptyv">[R$ 0,00]</span>`) +
@@ -1250,20 +1265,20 @@ function render(){
 
   // ---- preâmbulo emitentes ----
   let emit;
-  if(cfg.ecivil==='casado'){
-    emit=`${fv('nome1','nome do 1º emitente')}, ${cfg.sexo==='m'?'brasileira':'brasileiro'}, ${cfg.sexo==='m'?'casada':'casado'} sob o regime de ${fvRegime()}, ${fvLc('prof1','profissão')}, ${cfg.sexo==='m'?'portadora':'portador'} da Cédula de Identidade RG nº ${fv('rg1','RG')}, ${cfg.sexo==='m'?'inscrita':'inscrito'} no CPF sob o nº ${fv('cpf1','CPF')}, inscrição estadual de produtor rural nº ${fv('ie1','IE')}, e ${cfg.sexo==='m'?'seu esposo':'sua esposa'} ${fv('nome2','nome do cônjuge')}, ${cfg.sexo==='m'?'brasileiro, casado':'brasileira, casada'}, ${fvLc('prof2','profissão')}, ${cfg.sexo==='m'?'portador':'portadora'} da Cédula de Identidade RG nº ${fv('rg2','RG')}, ${cfg.sexo==='m'?'inscrito':'inscrita'} no CPF sob o nº ${fv('cpf2','CPF')}, ambos residentes e domiciliados na ${fv('endereco','endereço')}, no Município de ${fv('municipio_res','Município/UF')}, telefone ${fv('telefone','telefone')}`;
+  if(ecEmit==='casado'){
+    emit=`${fv('nome1','nome do 1º emitente')}, ${sxEmit==='m'?'brasileira':'brasileiro'}, ${sxEmit==='m'?'casada':'casado'} sob o regime de ${fvRegime()}, ${fvLc('prof1','profissão')}, ${sxEmit==='m'?'portadora':'portador'} da Cédula de Identidade RG nº ${fv('rg1','RG')}, ${sxEmit==='m'?'inscrita':'inscrito'} no CPF sob o nº ${fv('cpf1','CPF')}, inscrição estadual de produtor rural nº ${fv('ie1','IE')}, e ${sxEmit==='m'?'seu esposo':'sua esposa'} ${fv('nome2','nome do cônjuge')}, ${sxEmit==='m'?'brasileiro, casado':'brasileira, casada'}, ${fvLc('prof2','profissão')}, ${sxEmit==='m'?'portador':'portadora'} da Cédula de Identidade RG nº ${fv('rg2','RG')}, ${sxEmit==='m'?'inscrito':'inscrita'} no CPF sob o nº ${fv('cpf2','CPF')}, ambos residentes e domiciliados na ${fv('endereco','endereço')}, no Município de ${fv('municipio_res','Município/UF')}, telefone ${fv('telefone','telefone')}`;
   } else {
-    emit=`${fv('nome1','nome do emitente')}, ${E.nac}, ${cfg.ecivil==='solteiro'?(E.fem?'solteira':'solteiro'):''}, ${fvLc('prof1','profissão')}, ${E.portador} da Cédula de Identidade RG nº ${fv('rg1','RG')}, ${E.inscrito} no CPF sob o nº ${fv('cpf1','CPF')}, inscrição estadual de produtor rural nº ${fv('ie1','IE')}, ${E.domic} na ${fv('endereco','endereço')}, no Município de ${fv('municipio_res','Município/UF')}, telefone ${fv('telefone','telefone')}`;
+    emit=`${fv('nome1','nome do emitente')}, ${E.nac}, ${fvCivil('ec_emit',E.fem)}, ${fvLc('prof1','profissão')}, ${E.portador} da Cédula de Identidade RG nº ${fv('rg1','RG')}, ${E.inscrito} no CPF sob o nº ${fv('cpf1','CPF')}, inscrição estadual de produtor rural nº ${fv('ie1','IE')}, ${E.domic} na ${fv('endereco','endereço')}, no Município de ${fv('municipio_res','Município/UF')}, telefone ${fv('telefone','telefone')}`;
   }
 
   // ---- bloco anuente no item 1.2 ----
   let anu12='';
   if(A){
     let qual;
-    if(cfg.an_ecivil==='casado'){
-      qual=`${fv('an_nome1','nome do anuente')}, ${cfg.an_sexo==='m'?'brasileira':'brasileiro'}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, e ${cfg.an_sexo==='m'?'seu esposo':'sua esposa'} ${fv('an_nome2','nome do cônjuge')}, ${cfg.an_sexo==='m'?'brasileiro':'brasileira'}, ${fvLc('an_prof2','profissão')}, CPF nº ${fv('an_cpf2','CPF')}, Cédula de Identidade ${fv('an_rg2','RG')}, residentes e domiciliados na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
+    if(ecAnu==='casado'){
+      qual=`${fv('an_nome1','nome do anuente')}, ${sxAnu==='m'?'brasileira':'brasileiro'}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, e ${sxAnu==='m'?'seu esposo':'sua esposa'} ${fv('an_nome2','nome do cônjuge')}, ${sxAnu==='m'?'brasileiro':'brasileira'}, ${fvLc('an_prof2','profissão')}, CPF nº ${fv('an_cpf2','CPF')}, Cédula de Identidade ${fv('an_rg2','RG')}, residentes e domiciliados na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
     } else {
-      qual=`${fv('an_nome1','nome do anuente')}, ${A.nac}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, ${A.domic} na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
+      qual=`${fv('an_nome1','nome do anuente')}, ${A.nac}, ${fvCivil('ec_anu',A.fem)}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, ${A.domic} na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
     }
     anu12=` de propriedade ${A.plural?'dos Arrendadores':(A.fem?'da Arrendadora':'do Arrendador')} ${qual}, objeto do contrato de arrendamento${dataArrClausula()}, onde será desenvolvido o produto rural objeto desta Cédula, ${nImoveis>1?'localizados':'localizado'} ${imovelMunicipiosTxt()}, ${A.plural?'os quais anuem':(A.fem?'a qual anui':'o qual anui')} as responsabilidades ${E.de} ${E.plural?'EMITENTES':'EMITENTE'} da presente CPR, na qualidade de ${A.plural?'legítimos proprietários':(A.fem?'legítima proprietária':'legítimo proprietário')} ${nImoveis>1?'dos imóveis rurais acima descritos':'do imóvel rural acima descrito'}, onde será cultivada a lavoura objeto da presente garantia, ${A.declara} ter pleno conhecimento da constituição do penhor agrícola ora pactuado, concordando integralmente com a sua constituição e eficácia, inclusive de seu registro, comprometendo-se a não praticar qualquer ato que impeça ou dificulte o cultivo, desenvolvimento ou colheita da lavoura dada em garantia, até a plena satisfação da obrigação assumida perante a CREDORA. ${A.plural?'Os ANUENTES reconhecem':(A.fem?'A ANUENTE reconhece':'O ANUENTE reconhece')}, ainda, e ${A.obriga} a respeitar integralmente o penhor constituído, autorizando expressamente, em caso de inadimplemento ${E.de} ${E.plural?'EMITENTES':'EMITENTE'}, o acesso da CREDORA ou de seus representantes ${nImoveis>1?'aos imóveis rurais':'ao imóvel rural'}, para fins de fiscalização, colheita, retirada ou destinação da produção agrícola empenhada, sem que tal acesso configure turbação ou esbulho`;
   }
@@ -1280,7 +1295,7 @@ function render(){
   <table class="qr">
     <tr><td class="lab">1. Denominação</td><td>Cédula de Produto Rural (CPR), com liquidação <b>FÍSICA</b>, emitida na forma da Lei nº 8.929/1994.</td></tr>
     <tr><td class="lab">2. Número / emissão</td><td>Nº ${numCPR()}. Cunha Porã/SC, ${emissaoSpan()} de ${anoTxt()}.</td></tr>
-    <tr><td class="lab">3. ${E.plural?'Emitentes':'Emitente'}</td><td>${gv('nome1')?`<span class="fillv">${esc(gv('nome1'))}</span>`:'<span class="emptyv">[nome]</span>'}, CPF nº ${fv('cpf1','CPF')}${cfg.ecivil==='casado'?((gv('nome2')?` e <span class="fillv">${esc(gv('nome2'))}</span>`:' e <span class="emptyv">[cônjuge]</span>')+', CPF nº '+fv('cpf2','CPF')):''}, ${E.plural?'qualificados':E.qualif} no preâmbulo.</td></tr>
+    <tr><td class="lab">3. ${E.plural?'Emitentes':'Emitente'}</td><td>${gv('nome1')?`<span class="fillv">${esc(gv('nome1'))}</span>`:'<span class="emptyv">[nome]</span>'}, CPF nº ${fv('cpf1','CPF')}${ecEmit==='casado'?((gv('nome2')?` e <span class="fillv">${esc(gv('nome2'))}</span>`:' e <span class="emptyv">[cônjuge]</span>')+', CPF nº '+fv('cpf2','CPF')):''}, ${E.plural?'qualificados':E.qualif} no preâmbulo.</td></tr>
     <tr><td class="lab">4. Credora</td><td>COOPERATIVA REGIONAL AURIVERDE, CNPJ nº 83.731.927/0001-29.</td></tr>
     <tr><td class="lab">5. Produto rural</td><td><b>${produto.toUpperCase()}</b> em grão (industrial), a granel, safra ${fv('safra','safra')}, no padrão de qualidade descrito no item 1.3.</td></tr>
     <tr><td class="lab">6. Quantidade a entregar</td><td>${gv('qtde_kg')?`<span class="fillv lc">${esc(gv('qtde_kg'))}</span>`:'<span class="emptyv">[kg]</span>'}, equivalentes a ${fv('qtde_sacas','sacas')} sacas de 60 kg.</td></tr>
@@ -1388,8 +1403,9 @@ function render(){
 
 /* ===================== RENDER (CPR FINANCEIRA — texto integral) ===================== */
 function renderFinanceira(){
-  const E=flex(cfg.sexo,cfg.ecivil,'E');
-  const A=cfg.anuente==='sim'?flex(cfg.an_sexo,cfg.an_ecivil,'A'):null;
+  const ecEmit=gv('ec_emit'),sxEmit=gv('sx_emit'),ecAnu=gv('ec_anu'),sxAnu=gv('sx_anu');
+  const E=flex(sxEmit,ecEmit,'E');
+  const A=cfg.anuente==='sim'?flex(sxAnu,ecAnu,'A'):null;
   const produto = cfg.cultura==='milho'?'milho':(cfg.cultura==='trigo'?'trigo':'soja');
   const prodFem = (cfg.cultura==='soja');   // soja = feminino; milho/trigo = masculino
   const valorFull = (valorDisplay()?`<span class="fillv">${esc(valorDisplay())}</span>`:`<span class="emptyv">[R$ 0,00]</span>`) +
@@ -1408,20 +1424,20 @@ function renderFinanceira(){
 
   // preâmbulo emitentes
   let emit;
-  if(cfg.ecivil==='casado'){
-    emit=`${fv('nome1','nome do 1º emitente')}, ${cfg.sexo==='m'?'brasileira':'brasileiro'}, ${cfg.sexo==='m'?'casada':'casado'} sob o regime de ${fvRegime()}, ${fvLc('prof1','profissão')}, ${cfg.sexo==='m'?'portadora':'portador'} da Cédula de Identidade RG nº ${fv('rg1','RG')}, ${cfg.sexo==='m'?'inscrita':'inscrito'} no CPF sob o nº ${fv('cpf1','CPF')}, inscrição estadual de produtor rural nº ${fv('ie1','IE')}, e ${cfg.sexo==='m'?'seu esposo':'sua esposa'} ${fv('nome2','nome do cônjuge')}, ${cfg.sexo==='m'?'brasileiro, casado':'brasileira, casada'}, ${fvLc('prof2','profissão')}, ${cfg.sexo==='m'?'portador':'portadora'} da Cédula de Identidade RG nº ${fv('rg2','RG')}, ${cfg.sexo==='m'?'inscrito':'inscrita'} no CPF sob o nº ${fv('cpf2','CPF')}, ambos residentes e domiciliados na ${fv('endereco','endereço')}, no Município de ${fv('municipio_res','Município/UF')}, telefone ${fv('telefone','telefone')}`;
+  if(ecEmit==='casado'){
+    emit=`${fv('nome1','nome do 1º emitente')}, ${sxEmit==='m'?'brasileira':'brasileiro'}, ${sxEmit==='m'?'casada':'casado'} sob o regime de ${fvRegime()}, ${fvLc('prof1','profissão')}, ${sxEmit==='m'?'portadora':'portador'} da Cédula de Identidade RG nº ${fv('rg1','RG')}, ${sxEmit==='m'?'inscrita':'inscrito'} no CPF sob o nº ${fv('cpf1','CPF')}, inscrição estadual de produtor rural nº ${fv('ie1','IE')}, e ${sxEmit==='m'?'seu esposo':'sua esposa'} ${fv('nome2','nome do cônjuge')}, ${sxEmit==='m'?'brasileiro, casado':'brasileira, casada'}, ${fvLc('prof2','profissão')}, ${sxEmit==='m'?'portador':'portadora'} da Cédula de Identidade RG nº ${fv('rg2','RG')}, ${sxEmit==='m'?'inscrito':'inscrita'} no CPF sob o nº ${fv('cpf2','CPF')}, ambos residentes e domiciliados na ${fv('endereco','endereço')}, no Município de ${fv('municipio_res','Município/UF')}, telefone ${fv('telefone','telefone')}`;
   } else {
-    emit=`${fv('nome1','nome do emitente')}, ${E.nac}, ${cfg.ecivil==='solteiro'?(E.fem?'solteira':'solteiro'):''}, ${fvLc('prof1','profissão')}, ${E.portador} da Cédula de Identidade RG nº ${fv('rg1','RG')}, ${E.inscrito} no CPF sob o nº ${fv('cpf1','CPF')}, inscrição estadual de produtor rural nº ${fv('ie1','IE')}, ${E.domic} na ${fv('endereco','endereço')}, no Município de ${fv('municipio_res','Município/UF')}, telefone ${fv('telefone','telefone')}`;
+    emit=`${fv('nome1','nome do emitente')}, ${E.nac}, ${fvCivil('ec_emit',E.fem)}, ${fvLc('prof1','profissão')}, ${E.portador} da Cédula de Identidade RG nº ${fv('rg1','RG')}, ${E.inscrito} no CPF sob o nº ${fv('cpf1','CPF')}, inscrição estadual de produtor rural nº ${fv('ie1','IE')}, ${E.domic} na ${fv('endereco','endereço')}, no Município de ${fv('municipio_res','Município/UF')}, telefone ${fv('telefone','telefone')}`;
   }
 
   // bloco anuente no item 1.2
   let anu12='';
   if(A){
     let qual;
-    if(cfg.an_ecivil==='casado'){
-      qual=`${fv('an_nome1','nome do anuente')}, ${cfg.an_sexo==='m'?'brasileira':'brasileiro'}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, e ${cfg.an_sexo==='m'?'seu esposo':'sua esposa'} ${fv('an_nome2','nome do cônjuge')}, ${cfg.an_sexo==='m'?'brasileiro':'brasileira'}, ${fvLc('an_prof2','profissão')}, CPF nº ${fv('an_cpf2','CPF')}, Cédula de Identidade ${fv('an_rg2','RG')}, residentes e domiciliados na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
+    if(ecAnu==='casado'){
+      qual=`${fv('an_nome1','nome do anuente')}, ${sxAnu==='m'?'brasileira':'brasileiro'}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, e ${sxAnu==='m'?'seu esposo':'sua esposa'} ${fv('an_nome2','nome do cônjuge')}, ${sxAnu==='m'?'brasileiro':'brasileira'}, ${fvLc('an_prof2','profissão')}, CPF nº ${fv('an_cpf2','CPF')}, Cédula de Identidade ${fv('an_rg2','RG')}, residentes e domiciliados na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
     } else {
-      qual=`${fv('an_nome1','nome do anuente')}, ${A.nac}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, ${A.domic} na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
+      qual=`${fv('an_nome1','nome do anuente')}, ${A.nac}, ${fvCivil('ec_anu',A.fem)}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, ${A.domic} na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
     }
     anu12=` de propriedade ${A.plural?'dos Arrendadores':(A.fem?'da Arrendadora':'do Arrendador')} ${qual}, objeto do contrato de arrendamento${dataArrClausula()}, localizado no município de ${fv('mun_imovel','Município/UF')}, ${A.plural?'os quais anuem':(A.fem?'a qual anui':'o qual anui')} as responsabilidades ${E.de} ${E.plural?'EMITENTES':'EMITENTE'} da presente CPR, na qualidade de ${A.plural?'legítimos proprietários':(A.fem?'legítima proprietária':'legítimo proprietário')} do imóvel, ${A.declara} ter pleno conhecimento da constituição do penhor agrícola ora pactuado, concordando integralmente com a sua constituição, eficácia e registro, comprometendo-se a não praticar qualquer ato que impeça ou dificulte o cultivo, desenvolvimento ou colheita da lavoura dada em garantia, e autorizando expressamente, em caso de inadimplemento, o acesso da CREDORA ou de seus representantes ao imóvel rural para fins de fiscalização, colheita, retirada ou destinação da produção empenhada, sem que tal acesso configure turbação ou esbulho`;
   }
@@ -1433,7 +1449,7 @@ function renderFinanceira(){
   <table class="qr">
     <tr><td class="lab">1. Denominação</td><td>Cédula de Produto Rural com Liquidação <b>FINANCEIRA</b> (CPR Financeira), emitida na forma da Lei nº 8.929/1994.</td></tr>
     <tr><td class="lab">2. Número / emissão</td><td>Nº ${numCPR()}. Cunha Porã/SC, ${emissaoSpan()} de ${anoTxt()}.</td></tr>
-    <tr><td class="lab">3. ${E.plural?'Emitentes':'Emitente'}</td><td>${gv('nome1')?`<span class="fillv">${esc(gv('nome1'))}</span>`:'<span class="emptyv">[nome]</span>'}, CPF nº ${fv('cpf1','CPF')}${cfg.ecivil==='casado'?((gv('nome2')?` e <span class="fillv">${esc(gv('nome2'))}</span>`:' e <span class="emptyv">[cônjuge]</span>')+', CPF nº '+fv('cpf2','CPF')):''}, ${E.plural?'qualificados':E.qualif} no preâmbulo.</td></tr>
+    <tr><td class="lab">3. ${E.plural?'Emitentes':'Emitente'}</td><td>${gv('nome1')?`<span class="fillv">${esc(gv('nome1'))}</span>`:'<span class="emptyv">[nome]</span>'}, CPF nº ${fv('cpf1','CPF')}${ecEmit==='casado'?((gv('nome2')?` e <span class="fillv">${esc(gv('nome2'))}</span>`:' e <span class="emptyv">[cônjuge]</span>')+', CPF nº '+fv('cpf2','CPF')):''}, ${E.plural?'qualificados':E.qualif} no preâmbulo.</td></tr>
     <tr><td class="lab">4. Credora</td><td>COOPERATIVA REGIONAL AURIVERDE, CNPJ nº 83.731.927/0001-29.</td></tr>
     <tr><td class="lab">5. Produto rural</td><td><b>${produto.toUpperCase()}</b> em grão, a granel, safra ${fv('safra','safra')}, no padrão de qualidade descrito no item 1.3.</td></tr>
     <tr><td class="lab">6. Quantidade referenciada</td><td>${gv('qtde_kg')?`<span class="fillv lc">${esc(gv('qtde_kg'))}</span>`:'<span class="emptyv">[kg]</span>'}, equivalentes a ${fv('qtde_sacas','sacas')} sacas de 60 kg.</td></tr>
@@ -1596,6 +1612,13 @@ async function aplicarDados(dados){
   if(!dados || typeof dados!=='object' || !dados.config) throw new Error('formato');
   Object.assign(cfg, dados.config);
   formData = dados.campos || {};
+  // Migração de PDFs/JSON antigos: estado civil e gênero saíam da 1ª tela (config); agora são campos do formulário.
+  if(dados.config){
+    if(dados.config.ecivil   && !formData.ec_emit) formData.ec_emit=dados.config.ecivil;
+    if(dados.config.sexo     && !formData.sx_emit) formData.sx_emit=dados.config.sexo;
+    if(dados.config.an_ecivil&& !formData.ec_anu)  formData.ec_anu =dados.config.an_ecivil;
+    if(dados.config.an_sexo  && !formData.sx_anu)  formData.sx_anu =dados.config.an_sexo;
+  }
   nImoveis = contarImoveis(formData);   // reconstrói a quantidade de imóveis do PDF/JSON
   nCondominos = contarCondominos(formData);   // reconstrói os condôminos do PDF/JSON
   baseCalc = (dados.baseCalc==='valor') ? 'valor' : 'sacas';   // preserva o último campo informado do PDF (padrão: quantidade)
@@ -1625,10 +1648,9 @@ async function aplicarDados(dados){
 
 function importarDados(){ document.getElementById('fileInput').click(); }
 function aplicarConfigUI(){
-  ['tipo','cultura','safra_tipo','ecivil','sexo','anuente','an_ecivil','an_sexo'].forEach(name=>{
+  ['tipo','cultura','safra_tipo','anuente'].forEach(name=>{
     document.querySelectorAll(`input[name=${name}]`).forEach(r=>{ r.checked=(cfg[name]===r.value); });
   });
-  document.getElementById('anuenteExtra').classList.toggle('hidden', cfg.anuente!=='sim');
   document.getElementById('safraExtra').classList.toggle('hidden', cfg.cultura!=='soja' && cfg.cultura!=='milho');
   chips(); validate();
 }
