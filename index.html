@@ -58,7 +58,8 @@
   @media(max-width:920px){.panel .pbody{max-height:none}}
   .config-banner{background:#fff;border-bottom:1px solid var(--line);padding:12px 20px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
   .config-banner .lbl{font-size:.78rem;color:var(--muted);font-weight:600;margin-right:4px}
-  fieldset{border:none;margin:0;padding:14px 0 4px;border-top:1px solid var(--line)}
+  fieldset{border:none;margin:0;padding:24px 0 4px;border-top:1px solid var(--line)}  /* mais espaço acima do título da seção, separando-o do bloco anterior */
+  fieldset:first-child{padding-top:8px}
   fieldset:first-of-type{border-top:none}
   legend{font-weight:700;color:var(--folha);font-size:.8rem;letter-spacing:.5px;text-transform:uppercase}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -93,6 +94,8 @@
   .segbtn.seg-grid3 button:nth-child(3){grid-column:1 / -1}               /* Empregador Rural: largura total abaixo */
   .socio-seg{display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-top:8px;align-items:start}  /* Sócio | Segurado especial lado a lado */
   @media(max-width:520px){.socio-seg{grid-template-columns:1fr}}
+  .end-rua-num{display:grid;grid-template-columns:1fr 110px;gap:10px}  /* Rua ampla | Número estreito (~6 dígitos) */
+  @media(max-width:520px){.end-rua-num{grid-template-columns:1fr}}
   .segbtn button{flex:1;border:1.5px solid var(--line);border-radius:7px;padding:6px 8px;background:var(--field-bg);color:var(--muted);font-weight:600;font-size:.82rem;cursor:pointer;transition:all .12s}
   .segbtn button:hover{border-color:var(--folha)}
   .segbtn button.on{border-color:var(--folha);background:var(--folha);color:#fff}
@@ -257,7 +260,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v6.1 · 09/11/2026';
+const APP_VERSAO='v6.2 · 09/11/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,anuente:null};
 const LABELS={
@@ -522,7 +525,7 @@ function buildFields(){
     <div class="grid2"><div class="fld"><label class="flab">Nome do gerente</label><input class="f" id="gerente" placeholder="nome"></div>
     <div class="fld"><label class="flab">CPF</label><input class="f" id="cpfger" inputmode="numeric" placeholder="000.000.000-00"></div></div></fieldset>`;
   h+=`<fieldset><legend>Endereço do Representante da Credora</legend>
-    <div class="grid2"><div class="fld"><label class="flab">Rua</label><input class="f" id="end_rua" placeholder="rua"></div>
+    <div class="end-rua-num"><div class="fld"><label class="flab">Rua</label><input class="f" id="end_rua" placeholder="rua"></div>
     <div class="fld"><label class="flab">Número</label><input class="f" id="end_num" placeholder="nº"></div></div>
     <div class="grid2"><div class="fld"><label class="flab">Bairro</label><input class="f" id="end_bairro" placeholder="bairro"></div>
     <div class="fld"><label class="flab">Município/UF</label><input class="f" id="end_municipio" placeholder="Município/UF"></div></div></fieldset>`;
