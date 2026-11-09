@@ -58,8 +58,8 @@
   @media(max-width:920px){.panel .pbody{max-height:none}}
   .config-banner{background:#fff;border-bottom:1px solid var(--line);padding:12px 20px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
   .config-banner .lbl{font-size:.78rem;color:var(--muted);font-weight:600;margin-right:4px}
-  fieldset{border:none;margin:0;padding:24px 0 4px;border-top:1px solid var(--line)}  /* mais espaço acima do título da seção, separando-o do bloco anterior */
-  fieldset:first-child{padding-top:8px}
+  fieldset{border:none;margin:22px 0 0;padding:6px 0 4px;border-top:1px solid var(--line)}  /* o espaço ACIMA do título vem do margin-top (separa do bloco anterior); padding-top pequeno mantém o título junto do seu próprio conteúdo */
+  fieldset:first-child{margin-top:0;padding-top:8px}
   fieldset:first-of-type{border-top:none}
   legend{font-weight:700;color:var(--folha);font-size:.8rem;letter-spacing:.5px;text-transform:uppercase}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
