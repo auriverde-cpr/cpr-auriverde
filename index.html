@@ -86,7 +86,8 @@
   .preco-ref{font-size:.72rem;color:var(--muted);margin-top:3px}
   .preco-ref:empty{display:none}
   /* Botões Sim/Não (Sócio, Segurado especial) */
-  .segbtn{display:flex;gap:8px}
+  .segbtn{display:flex;gap:8px;flex-wrap:wrap}
+  .segbtn button{min-width:60px}
   .segbtn button{flex:1;border:1.5px solid var(--line);border-radius:7px;padding:6px 8px;background:var(--field-bg);color:var(--muted);font-weight:600;font-size:.82rem;cursor:pointer;transition:all .12s}
   .segbtn button:hover{border-color:var(--folha)}
   .segbtn button.on{border-color:var(--folha);background:var(--folha);color:#fff}
@@ -272,7 +273,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v5.2 · 05/11/2026';
+const APP_VERSAO='v5.5 · 06/11/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
 const LABELS={
@@ -446,6 +447,59 @@ function setImoveisFormData(vals){
 function adicionarImovel(){ saveFormData(); nImoveis++; buildFields(); calc(); render(); const w=document.getElementById('imoveisWrap'); if(w) w.lastElementChild.scrollIntoView({block:'center'}); }
 function removerImovel(i){ saveFormData(); const vals=getImoveis(); vals.splice(i-1,1); nImoveis=Math.max(1,vals.length); setImoveisFormData(vals); buildFields(); calc(); render(); }
 
+/* ===================== CONDÔMINOS (coproprietários — zero ou mais) ===================== */
+let nCondominos = 0;   // quantidade de condôminos no formulário (0 = nenhum)
+const COND_BASES = ['nome','ecivil','sexo','prof','rg','cpf','endereco','municipio','conj_nome','conj_rg','conj_cpf','conj_prof'];
+function condId(base,i){ return 'cond'+i+'_'+base; }
+/* HTML dos campos de um condômino (i). O cônjuge só é usado/validado quando casado. */
+function blocoCondominoCampos(i){
+  const cj='cond'+i;
+  return `<div class="imovel-bloco" data-cond="${i}">
+    <div class="imovel-head"><b>Condômino ${i}</b> <button type="button" class="btn-rem" onclick="removerCondomino(${i})">Remover</button></div>
+    <div class="fld full"><label class="flab">Nome completo</label><input class="f" id="${cj}_nome" placeholder="nome do condômino"></div>
+    <div class="grid3">
+      <div class="fld"><label class="flab">Estado civil</label><select class="f" id="${cj}_ecivil" onchange="toggleCondConjuge(${i})"><option value="">selecione…</option><option value="solteiro">Solteiro(a)</option><option value="casado">Casado(a)</option></select></div>
+      <div class="fld"><label class="flab">Sexo</label><select class="f" id="${cj}_sexo"><option value="">selecione…</option><option value="h">Masculino</option><option value="m">Feminino</option></select></div>
+      <div class="fld"><label class="flab">Profissão</label><input class="f lc" id="${cj}_prof" value="agropecuarista"></div>
+    </div>
+    <div class="grid3">
+      <div class="fld"><label class="flab">RG</label><input class="f" id="${cj}_rg" placeholder="RG"></div>
+      <div class="fld"><label class="flab">CPF</label><input class="f" id="${cj}_cpf" inputmode="numeric" placeholder="000.000.000-00"></div>
+      <div class="fld"><label class="flab">Município/UF (residência)</label><input class="f" id="${cj}_municipio" placeholder="Município/UF"></div>
+    </div>
+    <div class="fld full"><label class="flab">Endereço (linha/localidade)</label><input class="f" id="${cj}_endereco" placeholder="ex.: Linha São José, interior"></div>
+    <div id="${cj}_conjWrap" class="hidden">
+      <div class="fld full" style="margin-top:4px"><label class="flab">Nome do cônjuge</label><input class="f" id="${cj}_conj_nome" placeholder="nome do cônjuge"></div>
+      <div class="grid3">
+        <div class="fld"><label class="flab">RG (cônjuge)</label><input class="f" id="${cj}_conj_rg" placeholder="RG"></div>
+        <div class="fld"><label class="flab">CPF (cônjuge)</label><input class="f" id="${cj}_conj_cpf" inputmode="numeric" placeholder="000.000.000-00"></div>
+        <div class="fld"><label class="flab">Profissão (cônjuge)</label><input class="f lc" id="${cj}_conj_prof" value="agropecuarista"></div>
+      </div>
+    </div>
+  </div>`;
+}
+/* Lê os condôminos do formulário como array de objetos. */
+function getCondominos(){
+  const arr=[];
+  for(let i=1;i<=nCondominos;i++){ const o={}; COND_BASES.forEach(b=>o[b]=gv(condId(b,i))); arr.push(o); }
+  return arr;
+}
+/* Conta quantos condôminos existem nos dados salvos (para reconstruir ao voltar/reimportar). */
+function contarCondominos(fd){
+  let n=0; Object.keys(fd||{}).forEach(k=>{ const m=/^cond(\d+)_nome$/.exec(k); if(m) n=Math.max(n,+m[1]); });
+  return n;
+}
+/* Grava no formData um array de condôminos (re-indexado), limpando as chaves antigas. */
+function setCondominosFormData(vals){
+  Object.keys(formData).forEach(k=>{ if(/^cond\d+_/.test(k)) delete formData[k]; });
+  vals.forEach((v,idx)=>{ const i=idx+1; COND_BASES.forEach(b=>{ formData[condId(b,i)]=v[b]||''; }); });
+}
+function adicionarCondomino(){ saveFormData(); nCondominos++; buildFields(); render(); const w=document.getElementById('condominosWrap'); if(w&&w.lastElementChild) w.lastElementChild.scrollIntoView({block:'center'}); }
+function removerCondomino(i){ saveFormData(); const vals=getCondominos(); vals.splice(i-1,1); nCondominos=vals.length; setCondominosFormData(vals); buildFields(); render(); }
+/* Mostra/oculta os campos do cônjuge conforme o estado civil do condômino. */
+function toggleCondConjuge(i){ const w=document.getElementById('cond'+i+'_conjWrap'); if(w){ w.classList.toggle('hidden', gv('cond'+i+'_ecivil')!=='casado'); } }
+function syncCondConjuge(){ for(let i=1;i<=nCondominos;i++) toggleCondConjuge(i); }
+
 /* ===================== CAMPOS DINÂMICOS ===================== */
 function buildFields(){
   const E=flex(cfg.sexo,cfg.ecivil,'E');
@@ -484,9 +538,9 @@ function buildFields(){
       <div class="fld"><label class="flab">Sócio<span class="hint" tabindex="0" data-tip="Emitente é sócio/cooperado da Cooperativa Regional Auriverde? Como verificar? SES1400 (HS) - Parâmetros Gerais">?</span></label>
         <input type="text" class="f seg-hidden" id="socio" tabindex="-1" aria-hidden="true">
         <div class="segbtn" data-for="socio"><button type="button" data-v="Sim">Sim</button><button type="button" data-v="Não">Não</button></div></div>
-      <div class="fld"><label class="flab">Segurado especial<span class="hint" tabindex="0" data-tip="Emitente enquadrado como segurado especial? Como verificar? SES1400 (HS) - Parâmetros Gerais - Contr. FUNRURAL: 1 - Não 2 - Sim">?</span></label>
+      <div class="fld full"><label class="flab">Segurado especial<span class="hint" tabindex="0" data-tip="Enquadramento do emitente para fins de FUNRURAL. 'Empregador Rural' = NÃO há incidência de FUNRURAL (o encargo é recolhido pelo próprio empregador). Como verificar? SES1400 (HS) - Parâmetros Gerais - Contr. FUNRURAL.">?</span></label>
         <input type="text" class="f seg-hidden" id="segurado_especial" tabindex="-1" aria-hidden="true">
-        <div class="segbtn" data-for="segurado_especial"><button type="button" data-v="Sim">Sim</button><button type="button" data-v="Não">Não</button></div></div>
+        <div class="segbtn" data-for="segurado_especial"><button type="button" data-v="Sim">Sim</button><button type="button" data-v="Não">Não</button><button type="button" data-v="Empregador Rural">Empregador Rural</button></div></div>
     </div>`:''}</fieldset>`;
 
   if(cfg.ecivil==='casado'){
@@ -539,6 +593,11 @@ function buildFields(){
   h+=`<fieldset><legend>Imóvel${nImoveis>1?'(is)':''}</legend><div id="imoveisWrap">`;
   for(let _i=1;_i<=nImoveis;_i++) h+=blocoImovelCampos(_i);
   h+=`</div><div style="margin-top:8px"><button type="button" class="btn-add" onclick="adicionarImovel()">+ Adicionar imóvel</button><span class="hint" tabindex="0" data-tip="Use apenas quando o proprietário de TODOS os imóveis for o mesmo (o anuente/arrendador é único). Para imóveis de proprietários diferentes, emita CPRs separadas.">?</span></div></fieldset>`;
+
+  // Condôminos (coproprietários) — opcional, 0 ou mais
+  h+=`<fieldset><legend>Condôminos (coproprietários)${nCondominos>0?' — '+nCondominos:''}</legend><div id="condominosWrap">`;
+  for(let _i=1;_i<=nCondominos;_i++) h+=blocoCondominoCampos(_i);
+  h+=`</div><div style="margin-top:8px"><button type="button" class="btn-add" onclick="adicionarCondomino()">+ Adicionar condômino</button><span class="hint" tabindex="0" data-tip="Inclua os demais coproprietários (condôminos) do imóvel, além ${cfg.anuente==='sim'?'do arrendador/anuente':'do emitente'}. ${cfg.anuente==='sim'?'Como há anuente, o texto trata os condôminos como coproprietários do imóvel ARRENDADO (junto ao arrendador).':'Sem anuente, o texto trata os condôminos como coproprietários do imóvel PRÓPRIO do emitente.'} Cada condômino é qualificado no documento e anui expressamente ao penhor. Se casado, informe também os dados do cônjuge. Deixe vazio se não houver condôminos.">?</span></div></fieldset>`;
 
   // Produto
   h+=`<fieldset><legend>Produto</legend>
@@ -610,6 +669,7 @@ function buildFields(){
     _onInput('matricula'+s,numSep); _onInput('ccir'+s,numSep); _onInput('car'+s,carMask);
     _onInput('area_total'+s,decMask); _onInput('area_cult'+s,decMask);
   }
+  for(let _i=1;_i<=nCondominos;_i++){ _onInput('cond'+_i+'_rg',numSep); _onInput('cond'+_i+'_conj_rg',numSep); }  // RG dos condôminos
   // Moeda (R$) no preço de referência e no valor total: formata ao sair do campo.
   const fmtMoedaEl=el=>{ const n=parseMoeda(el.value); el.value=isNaN(n)?'':n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); };
   ['preco_saca','valor'].forEach(id=>{const el=document.getElementById(id); if(el) el.addEventListener('blur',()=>{ fmtMoedaEl(el); saveFormData(); render(); });});
@@ -653,6 +713,7 @@ function buildFields(){
   // Formata em R$ o preço (referência EPAGRI ou restaurado) e o valor, se preenchidos.
   ['preco_saca','valor'].forEach(id=>{ const el=document.getElementById(id); if(el && el.value.trim()){ const n=parseMoeda(el.value); el.value=isNaN(n)?'':n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); } });
   syncSegBtns();       // marca o botão Sim/Não ativo conforme o valor restaurado
+  syncCondConjuge();   // mostra/oculta os campos de cônjuge dos condôminos restaurados
 }
 /* Marca como ativo o botão Sim/Não que corresponde ao valor guardado no input oculto. */
 function syncSegBtns(){
@@ -698,6 +759,51 @@ function enderecoGerenteTxt(){
 
 /* ===== Textos dos imóveis no documento (1 ou vários) ===== */
 function fvRaw(v,guia){ return v?`<span class="fillv">${esc(v)}</span>`:`<span class="emptyv">[${guia}]</span>`; }
+function fvRawLc(v,guia){ return v?`<span class="fillv lc">${esc(v)}</span>`:`<span class="emptyv">[${guia}]</span>`; }
+
+/* ===== Condôminos no documento (qualificação + cláusula de anuência) ===== */
+/* Qualificação completa de UM condômino (com cônjuge, quando casado), com flexão por sexo. */
+function qualificaCondomino(c){
+  const fem = c.sexo==='m';                 // convenção: 'm' = feminino, 'h' = masculino
+  const casado = c.ecivil==='casado', solteiro = c.ecivil==='solteiro';
+  const nome=fvRaw(c.nome,'nome do condômino'), prof=fvRawLc(c.prof,'profissão');
+  const rg=fvRaw(c.rg,'RG'), cpf=fvRaw(c.cpf,'CPF'), end=fvRaw(c.endereco,'endereço'), mun=fvRaw(c.municipio,'Município/UF');
+  const nac=fem?'brasileira':'brasileiro';
+  if(casado){
+    const fc=!fem;   // cônjuge: gênero oposto
+    return `${nome}, ${nac}, ${fem?'casada':'casado'}, ${prof}, ${fem?'portadora':'portador'} da Cédula de Identidade RG nº ${rg}, ${fem?'inscrita':'inscrito'} no CPF sob o nº ${cpf}, e ${fem?'seu esposo':'sua esposa'} ${fvRaw(c.conj_nome,'nome do cônjuge')}, ${fc?'brasileira, casada':'brasileiro, casado'}, ${fvRawLc(c.conj_prof,'profissão')}, ${fc?'portadora':'portador'} da Cédula de Identidade RG nº ${fvRaw(c.conj_rg,'RG')}, ${fc?'inscrita':'inscrito'} no CPF sob o nº ${fvRaw(c.conj_cpf,'CPF')}, ambos residentes e domiciliados na ${end}, no Município de ${mun}`;
+  }
+  return `${nome}, ${nac}${solteiro?(fem?', solteira':', solteiro'):''}, ${prof}, ${fem?'portadora':'portador'} da Cédula de Identidade RG nº ${rg}, ${fem?'inscrita':'inscrito'} no CPF sob o nº ${cpf}, ${fem?'residente e domiciliada':'residente e domiciliado'} na ${end}, no Município de ${mun}`;
+}
+/* Sufixo de condomínio para a identificação do imóvel na cláusula de garantia (8.2/7.2). */
+function condominoCoPropTxt(itemNum){
+  const cs=getCondominos(); if(cs.length===0) return '';
+  const varias = cs.length>1 || cs.some(c=>c.ecivil==='casado');
+  return `, em condomínio com ${varias?'os demais coproprietários qualificados':'o coproprietário qualificado'} no item ${itemNum}`;
+}
+/* Cláusula de anuência dos condôminos (só aparece quando há ao menos um). num = nº da subcláusula.
+   Distingue: imóvel PRÓPRIO do emitente em condomínio (sem anuente) × imóvel do ARRENDADOR/anuente
+   em condomínio (com anuente). O vínculo é inferido do campo Anuente (sim = arrendado). */
+function condominosClausula(num){
+  const cs=getCondominos(); if(cs.length===0) return '';
+  const E=flex(cfg.sexo,cfg.ecivil,'E');
+  const temAnu = cfg.anuente==='sim';
+  const A = temAnu?flex(cfg.an_sexo,cfg.an_ecivil,'A'):null;
+  const plural = cs.length>1 || cs.some(c=>c.ecivil==='casado');   // mais de uma pessoa anuindo (inclui cônjuge)
+  const umFem = cs.length===1 && cs[0].sexo==='m' && cs[0].ecivil!=='casado';
+  const lista = cs.length===1 ? qualificaCondomino(cs[0]) : cs.map((c,i)=>`(${i+1}) ${qualificaCondomino(c)}`).join('; ');
+  const titulo = plural?'DOS CONDÔMINOS':(umFem?'DA CONDÔMINA':'DO CONDÔMINO');
+  const sujeito = plural?'os condôminos a seguir qualificados':(umFem?'a condômina a seguir qualificada':'o condômino a seguir qualificado');
+  const anuem = plural?'anuem':'anui';
+  const copro = plural?'na qualidade de coproprietários':(umFem?'na qualidade de coproprietária':'na qualidade de coproprietário');
+  const autoriz = plural?'Os condôminos autorizam':(umFem?'A condômina autoriza':'O condômino autoriza');
+  // Com quem são coproprietários: arrendador/anuente (imóvel arrendado) ou emitente (imóvel próprio).
+  const comQuem = temAnu
+    ? `juntamente com ${A.plural?'os ANUENTES/arrendadores':(A.fem?'a ANUENTE/arrendadora':'o ANUENTE/arrendador')}`
+    : `juntamente com ${E.plural?'os EMITENTES':(E.fem?'a EMITENTE':'o EMITENTE')}`;
+  const imovelTxt = `${nImoveis>1?'dos imóveis rurais':'do imóvel rural'}${temAnu?' objeto do arrendamento':''} em que será desenvolvida a lavoura dada em garantia`;
+  return `${num}. <b>${titulo}</b>: ${sujeito}, ${copro} ${imovelTxt}, ${comQuem}, ${anuem} expressamente à constituição do penhor agrícola de que trata esta Cláusula, declarando ter pleno conhecimento e integral concordância com a garantia ora constituída e com o seu registro, e comprometendo-se a não praticar qualquer ato que impeça ou dificulte o cultivo, o desenvolvimento ou a colheita da lavoura empenhada, até a plena satisfação da obrigação garantida. ${autoriz} expressamente, em caso de inadimplemento, o acesso da CREDORA ou de seus representantes ${nImoveis>1?'aos imóveis rurais':'ao imóvel rural'}, para fins de fiscalização, colheita, retirada ou destinação da produção empenhada, sem que tal acesso configure turbação ou esbulho. Qualificação: ${lista}.`;
+}
 function parseHa(v){ const n=parseFloat(String(v||'').replace(/\./g,'').replace(',','.')); return isNaN(n)?0:n; }
 function somaArea(campo){ return getImoveis().reduce((t,im)=>t+parseHa(im[campo]),0); }
 function fmtHa(n){ return n.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:2}); }
@@ -971,6 +1077,7 @@ function parseMoeda(str){
 function taxaFunrural(){
   const s=gv('socio'), e=gv('segurado_especial');
   if(!s||!e) return NaN;
+  if(e==='Empregador Rural') return 0;   // empregador rural: NÃO há incidência de FUNRURAL
   const socio=(s==='Sim'), seg=(e==='Sim');
   if(socio&&seg)  return 0.0150;   // sócio + segurado especial
   if(socio&&!seg) return 0.0163;   // sócio + não segurado
@@ -979,6 +1086,8 @@ function taxaFunrural(){
 }
 /* Taxa FUNRURAL usada no cálculo: Física usa a taxa (0 enquanto não escolhida); Financeira não usa. */
 function taxaEfetiva(){ if(cfg.tipo!=='fisica') return 0; const t=taxaFunrural(); return isNaN(t)?0:t; }
+/* Há FUNRURAL nesta CPR? (Física, enquadramento respondido e com taxa > 0 — Empregador Rural não tem). */
+function temFunrural(){ return cfg.tipo==='fisica' && taxaEfetiva()>0; }
 
 /* ===== Juros remuneratórios da CPR Financeira (por regional da filial; não editáveis) ===== */
 const JUROS_REGIONAL = {
@@ -1099,6 +1208,13 @@ function blocoAssinaturas(){
       s+=`<div class="sig-line" style="text-align:center"><div class="sig-rule" style="width:60%;margin:0 auto"></div>${sigNomeCPF('ANUENTE',gv('an_nome1'),gv('an_cpf1'))}</div>`;
     }
   }
+  getCondominos().forEach(c=>{
+    if(c.ecivil==='casado'){
+      s+=`<div class="sig-line sig-flex"><div><div class="sig-rule"></div>${sigNomeCPF('CONDÔMINO',c.nome,c.cpf)}</div><div><div class="sig-rule"></div>${sigNomeCPF('CONDÔMINO',c.conj_nome,c.conj_cpf)}</div></div>`;
+    } else {
+      s+=`<div class="sig-line" style="text-align:center"><div class="sig-rule" style="width:60%;margin:0 auto"></div>${sigNomeCPF('CONDÔMINO',c.nome,c.cpf)}</div>`;
+    }
+  });
   s+=`<div class="sig-line" style="text-align:center"><div class="sig-rule" style="width:60%;margin:0 auto"></div><span class="sig-role">CREDORA</span><b>COOPERATIVA REGIONAL AURIVERDE</b><br>CNPJ: 83.731.927/0001-29</div>`;
   return s;
 }
@@ -1162,8 +1278,8 @@ function render(){
     <tr><td class="lab">10. Data ou prazo de entrega</td><td>Até ${fv('prazo_entrega','data')}, na forma da Cláusula Quarta.</td></tr>
     <tr><td class="lab">11. Forma de liquidação</td><td>Exclusivamente <b>FÍSICA</b>, mediante entrega do produto rural, sem liquidação financeira.</td></tr>
     <tr><td class="lab">12. Preço pré-fixado e data de fixação</td><td>${fv('preco_saca','R$ 0,00')} por saca de 60 kg, fixado em ${dataBRField('data_apuracao','data de fixação')}.</td></tr>
-    <tr><td class="lab">13. Valor referencial de emissão (bruto)</td><td>${brutoFull}, na forma do art. 2º, § 6º, da Resolução CMN nº 4.870/2020. Sobre este valor bruto incide o FUNRURAL (encargo retido pela CREDORA) de ${funruralSpan}, por ocasião da comercialização do produto rural.</td></tr>
-    <tr><td class="lab">14. Antecipação do preço pela credora</td><td>${valorFull}, correspondente ao valor bruto (item 13) deduzido o FUNRURAL, na forma da Cláusula Terceira.</td></tr>
+    <tr><td class="lab">13. Valor referencial de emissão${temFunrural()?' (bruto)':''}</td><td>${brutoFull}, na forma do art. 2º, § 6º, da Resolução CMN nº 4.870/2020.${temFunrural()?` Sobre este valor bruto incide o FUNRURAL (encargo retido pela CREDORA) de ${funruralSpan}, por ocasião da comercialização do produto rural.`:''}</td></tr>
+    <tr><td class="lab">14. Antecipação do preço pela credora</td><td>${valorFull}${temFunrural()?', correspondente ao valor bruto (item 13) deduzido o FUNRURAL':''}, na forma da Cláusula Terceira.</td></tr>
     <tr><td class="lab">15. Data e forma do desembolso da antecipação</td><td>Desembolso em até 10 (dez) dias úteis após o registro do título junto a entidade autorizada pelo Banco Central do Brasil, mediante crédito na conta movimento junto à CREDORA, na forma do item 3.2.</td></tr>
     <tr><td class="lab">16. Garantia</td><td>Penhor agrícola de primeiro grau sobre a lavoura e a produção de ${produto} da área identificada nos itens 7 e 8.</td></tr>
     <tr><td class="lab">17. Encargos moratórios</td><td>Juros de mora de 1% ao mês; correção monetária pela variação positiva do INPC; multa não compensatória de 2% (dois por cento), na forma da Cláusula Sexta.</td></tr>
@@ -1192,7 +1308,7 @@ function render(){
   <p class="cl">2.3. <b>Critério de valoração em caso de inadimplemento</b>: nas hipóteses em que esta Cédula admita conversão da obrigação de entrega em pagamento em dinheiro, notadamente na forma da Cláusula Sexta, o produto será valorado exclusivamente pelo preço pré-fixado constante do item 2.1, multiplicado pela quantidade não entregue, independentemente de qualquer variação de mercado ocorrida entre a emissão e o inadimplemento.</p>
 
   <div class="cl-h">CLÁUSULA TERCEIRA – DA ANTECIPAÇÃO DO PREÇO PELA CREDORA</div>
-  <p class="cl">3.1. <b>Antecipação do preço</b>: em contraprestação à promessa de entrega objeto desta Cédula, a <b>CREDORA</b> antecipa ${E.art==='os'?'aos':(E.fem?'à':'ao')} <b>${EM}</b> o preço pré-fixado ${prodFem?'da':'do'} ${produto} a ser entregue, no valor de ${valorFull}, já deduzido o valor referente ao FUNRURAL (artigo 30, inciso IV, da Lei nº 8.212/1991), em parcela única, na data indicada no item 15 do Quadro-Resumo. A antecipação do preço constitui a única contraprestação devida pela <b>CREDORA</b>, não incidindo sobre a operação juros remuneratórios ou encargos financeiros de qualquer natureza.</p>
+  <p class="cl">3.1. <b>Antecipação do preço</b>: em contraprestação à promessa de entrega objeto desta Cédula, a <b>CREDORA</b> antecipa ${E.art==='os'?'aos':(E.fem?'à':'ao')} <b>${EM}</b> o preço pré-fixado ${prodFem?'da':'do'} ${produto} a ser entregue, no valor de ${valorFull}${temFunrural()?', já deduzido o valor referente ao FUNRURAL (artigo 30, inciso IV, da Lei nº 8.212/1991)':''}, em parcela única, na data indicada no item 15 do Quadro-Resumo. A antecipação do preço constitui a única contraprestação devida pela <b>CREDORA</b>, não incidindo sobre a operação juros remuneratórios ou encargos financeiros de qualquer natureza.</p>
   <p class="cl">3.2. <b>Forma de pagamento</b>: o pagamento da antecipação será realizado mediante crédito na conta movimento junto à <b>CREDORA</b>, de titularidade ${E.de} <b>${EM}</b>, valendo o respectivo aviso de crédito como comprovante e prova plena do pagamento, independentemente de recibo em apartado.</p>
   <p class="cl">3.3. <b>Condições da antecipação</b>: o pagamento da antecipação fica condicionado, cumulativamente, (i) à assinatura desta Cédula por todos os signatários e testemunhas; (ii) à entrega, ${E.por} <b>${EM}</b>, da matrícula atualizada do imóvel, do recibo de inscrição no CAR e dos demais documentos exigidos pela <b>CREDORA</b>; e (iii) à adoção das providências necessárias ao registro do título e à averbação da garantia, na forma da Cláusula Nona.</p>
 
@@ -1218,13 +1334,14 @@ function render(){
 
   <div class="cl-h">CLÁUSULA OITAVA – DA GARANTIA CEDULARMENTE CONSTITUÍDA E DA IDENTIFICAÇÃO DO IMÓVEL</div>
   <p class="cl">8.1. Nos termos do art. 5º da Lei nº 8.929/1994, dos arts. 1.438 e 1.442, II e III, do Código Civil e do art. 6º, I e II, da Lei nº 492/1937, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> ${E.constitui} em favor da <b>CREDORA</b> <b>penhor agrícola de primeiro grau</b> sobre a lavoura e a produção de ${produto} descritas na Cláusula Primeira, pendentes ou em formação, cultivadas na área identificada no item 1.2, como garantia do integral cumprimento da obrigação de entrega assumida.</p>
-  <p class="cl">8.2. <b>Identificação do imóvel</b>: ${imovelDescGarantia(A?'objeto do arrendamento indicado no item 1.2':`de propriedade ${E.de} próprio${E.plural?'s':''} <b>${EM}</b>`)}</p>
+  <p class="cl">8.2. <b>Identificação do imóvel</b>: ${imovelDescGarantia((A?'objeto do arrendamento indicado no item 1.2':`de propriedade ${E.de} próprio${E.plural?'s':''} <b>${EM}</b>`)+condominoCoPropTxt('8.9'))}</p>
   <p class="cl">8.3. O produto empenhado permanecerá em poder ${E.de} <b>${EM}</b>, que ${E.assume} a condição de ${E.plural?'fiéis':'fiel'} depositário${E.plural?'s':''}, sem qualquer remuneração, respondendo pela guarda e conservação dos bens na forma dos arts. 627 a 646 do Código Civil e do art. 7º, § 1º, da Lei nº 8.929/1994, sujeitando-se às sanções civis e penais cabíveis.</p>
   <p class="cl">8.4. É expressamente vedada a constituição de qualquer novo ônus ou garantia sobre a lavoura e a produção empenhadas, bem como a emissão de outra Cédula de Produto Rural ou contrato de compra e venda futura referenciados à mesma safra e área, sem prévia anuência da <b>CREDORA</b>, sob pena de vencimento antecipado.</p>
   <p class="cl">8.5. Verificada diminuição ou depreciação da garantia constituída, a <b>CREDORA</b> comunicará o fato ${E.ao} <b>${EM}</b>, por escrito, que ${E.plural?'deverão':'deverá'} reforçá-la no prazo de 10 (dez) dias, sob pena de vencimento antecipado.</p>
   <p class="cl">8.6. ${E.artU} <b>${EM}</b> ${E.obriga} a manter a lavoura e o produto empenhados cobertos por seguro agrícola ou por instrumento equivalente de proteção contra riscos de destruição, perda de qualidade, danos físicos, furto e roubo, por valor não inferior ao valor referencial da obrigação garantida, indicando a <b>CREDORA</b> como beneficiária da indenização até o limite do seu crédito.</p>
   <p class="cl">8.7. Os bens vinculados a esta Cédula não serão penhorados ou sequestrados por outras dívidas ${E.de} <b>${EM}</b>, cumprindo ${E.plural?'a estes':'a este'} denunciar a existência desta Cédula às autoridades incumbidas da diligência, sob pena de responder pelos prejuízos resultantes da omissão, nos termos do art. 18 da Lei nº 8.929/1994.</p>
   <p class="cl">8.8. Sem prejuízo do registro previsto no item 18 do Quadro-Resumo, o penhor agrícola constituído nesta Cláusula será levado a registro no Cartório de Registro de Imóveis da circunscrição em que localizado o imóvel indicado no item 8.2, na forma do art. 12, §§ 1º e 2º, da Lei nº 8.929/1994. Para os fins do registro da garantia, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b>${emAnu} ${E.plural||A?'obrigam-se':'obriga-se'} a fornecer, às suas expensas, todos os documentos exigidos pelo Oficial de Registro de Imóveis.</p>
+  ${getCondominos().length?`<p class="cl">${condominosClausula('8.9')}</p>`:''}
 
   <div class="cl-h">CLÁUSULA NONA – DAS DECLARAÇÕES ${E.plural?'DOS EMITENTES':'DO EMITENTE'}</div>
   <p class="cl">9.1. ${E.artU} <b>${EM}</b> ${E.declara}, sob as penas da lei: a) que ${E.possui} legitimação para a emissão desta Cédula, na forma do art. 2º, I, da Lei nº 8.929/1994; b) que são verdadeiras e exatas todas as informações relativas à qualificação, área cultivada, safra, quantidade e qualidade do produto e aos bens oferecidos em garantia, ${E.ciente} de que declaração falsa caracteriza crime, nos termos do art. 17 da Lei nº 8.929/1994; c) que a lavoura e a produção empenhadas estão livres de ônus e não foram vinculadas a outra CPR, contrato de compra e venda futura ou operação de barter referente à mesma safra e área; d) que não se ${E.plural?'encontram':'encontra'} em insolvência, recuperação judicial ou extrajudicial; e) que o imóvel indicado no item 8.2 possui inscrição regular no CAR e que a atividade observa a legislação ambiental e trabalhista, sem trabalho em condições análogas às de escravo ou infantil; f) que a lavoura e a produção dadas em garantia não são essenciais ao exercício da atividade, para os fins do art. 5º, § 1º, da Lei nº 8.929/1994; g) que ${E.recebe} a antecipação do preço prevista na Cláusula Terceira como única contraprestação da CREDORA, ${E.ciente} de que a obrigação consiste na entrega do produto; h) que ${E.esta} ${E.ciente} de que o instrumento foi ajustado em caráter irrevogável e irretratável.</p>
@@ -1372,13 +1489,15 @@ function renderFinanceira(){
 
   <div class="cl-h">CLÁUSULA SÉTIMA – DA GARANTIA CEDULARMENTE CONSTITUÍDA E DA IDENTIFICAÇÃO DO IMÓVEL</div>
   <p class="cl">7.1. Nos termos do art. 5º da Lei nº 8.929/1994, dos arts. 1.438 e 1.442, II e III, do Código Civil e do art. 6º, I e II, da Lei nº 492/1937, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b> ${E.constitui} em favor da <b>CREDORA</b> <b>penhor agrícola de primeiro grau</b> sobre a lavoura e a produção de ${produto} descritas na Cláusula Primeira, pendentes ou em formação, cultivadas na área identificada no item 1.2, como garantia do integral cumprimento da obrigação assumida.</p>
-  <p class="cl">7.2. <b>Identificação do imóvel</b>: ${imovelDescGarantia(A?'objeto do arrendamento indicado no item 1.2':`de propriedade ${E.de} próprio${E.plural?'s':''} <b>${EM}</b>`)}</p>
+  <p class="cl">7.2. <b>Identificação do imóvel</b>: ${imovelDescGarantia((A?'objeto do arrendamento indicado no item 1.2':`de propriedade ${E.de} próprio${E.plural?'s':''} <b>${EM}</b>`)+condominoCoPropTxt('7.9'))}</p>
   <p class="cl">7.3. O produto empenhado permanecerá em poder ${E.de} <b>${EM}</b>, que ${E.assume} a condição de ${E.plural?'fiéis':'fiel'} depositário${E.plural?'s':''}, sem qualquer remuneração, respondendo pela guarda e conservação dos bens na forma dos arts. 627 a 646 do Código Civil e do art. 7º, § 1º, da Lei nº 8.929/1994.</p>
   <p class="cl">7.4. É expressamente vedada a constituição de qualquer novo ônus ou garantia sobre a lavoura e a produção empenhadas, bem como a emissão de outra Cédula de Produto Rural referenciada à mesma safra e área, sem prévia anuência da <b>CREDORA</b>, sob pena de vencimento antecipado.</p>
   <p class="cl">7.5. Verificada diminuição ou depreciação da garantia constituída, a <b>CREDORA</b> comunicará o fato ${E.ao} <b>${EM}</b>, por escrito, que ${E.plural?'deverão':'deverá'} reforçá-la no prazo de 10 (dez) dias, sob pena de vencimento antecipado.</p>
   <p class="cl">7.6. ${E.artU} <b>${EM}</b> ${E.obriga} a manter a lavoura e o produto empenhados cobertos por seguro agrícola ou instrumento equivalente, indicando a <b>CREDORA</b> como beneficiária da indenização até o limite do seu crédito.</p>
   <p class="cl">7.7. Os bens vinculados a esta Cédula não serão penhorados ou sequestrados por outras dívidas ${E.de} <b>${EM}</b>, cumprindo denunciar a existência desta Cédula às autoridades incumbidas da diligência, nos termos do art. 18 da Lei nº 8.929/1994.</p>
   <p class="cl">7.8. Sem prejuízo do registro previsto no item 21 do Quadro-Resumo, o penhor agrícola constituído nesta Cláusula será levado a registro no Cartório de Registro de Imóveis da circunscrição em que localizado o imóvel indicado no item 7.2, na forma do art. 12, §§ 1º e 2º, da Lei nº 8.929/1994. Para os fins do registro, ${E.artU.toLowerCase()==='os'?'os':(E.fem?'a':'o')} <b>${EM}</b>${emAnu} ${E.plural||A?'obrigam-se':'obriga-se'} a fornecer, às suas expensas, todos os documentos exigidos pelo Oficial de Registro de Imóveis.</p>
+
+  ${getCondominos().length?`<p class="cl">${condominosClausula('7.9')}</p>`:''}
 
   <div class="cl-h">CLÁUSULA OITAVA – DAS DECLARAÇÕES ${E.plural?'DOS EMITENTES':'DO EMITENTE'}</div>
   <p class="cl">8.1. ${E.artU} <b>${EM}</b> ${E.declara}, sob as penas da lei: a) que ${E.possui} legitimação para a emissão desta Cédula, na forma do art. 2º, I, da Lei nº 8.929/1994; b) que são verdadeiras e exatas todas as informações relativas à qualificação, área cultivada, safra, quantidade e qualidade do produto e aos bens oferecidos em garantia, ${E.ciente} de que declaração falsa caracteriza crime, nos termos do art. 17 da Lei nº 8.929/1994; c) que a lavoura e a produção empenhadas estão livres de ônus e não foram vinculadas a outra CPR, contrato de compra e venda futura ou operação de barter referente à mesma safra e área; d) que não se ${E.plural?'encontram':'encontra'} em insolvência, recuperação judicial ou extrajudicial; e) que o imóvel indicado no item 7.2 possui inscrição regular no CAR e que a atividade observa a legislação ambiental e trabalhista, sem trabalho em condições análogas às de escravo ou infantil; f) que a lavoura e a produção dadas em garantia não são essenciais ao exercício da atividade, para os fins do art. 5º, § 1º, da Lei nº 8.929/1994; g) que ${E.recebe} e ${E.plural?'compreenderam':'compreendeu'} as condições financeiras da operação; h) que ${E.esta} ${E.ciente} de que o instrumento foi ajustado em caráter irrevogável e irretratável.</p>
@@ -1466,6 +1585,7 @@ async function aplicarDados(dados){
   Object.assign(cfg, dados.config);
   formData = dados.campos || {};
   nImoveis = contarImoveis(formData);   // reconstrói a quantidade de imóveis do PDF/JSON
+  nCondominos = contarCondominos(formData);   // reconstrói os condôminos do PDF/JSON
   baseCalc = (dados.baseCalc==='valor') ? 'valor' : 'sacas';   // preserva o último campo informado do PDF (padrão: quantidade)
   if(cfg.tipo!=='fisica'){ delete formData.preco_saca; delete formData.data_apuracao; }   // Financeira: preço segue a referência EPAGRI atual. Física: mantém o preço pré-fixado do PDF.
 
@@ -1562,6 +1682,7 @@ function camposFaltandoEls(){
   const els=[];
   document.querySelectorAll('#formFields input.f, #formFields select.f').forEach(el=>{
     if(el.readOnly) return;                                                   // ignora calculados (valor, kg)
+    if(el.closest('.hidden')) return;                                         // ignora campos ocultos (ex.: cônjuge do condômino solteiro)
     if(el.id==='an_data_arr') return;                                         // data do arrendamento é opcional
     if(el.id==='regime_outro' && document.getElementById('regime')?.value!=='outro') return; // só quando "outro"
     let vazio = !el.value.trim();
