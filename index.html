@@ -260,7 +260,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v6.2 · 09/11/2026';
+const APP_VERSAO='v6.4 · 09/11/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,anuente:null};
 const LABELS={
@@ -429,7 +429,7 @@ function removerImovel(i){ saveFormData(); const vals=getImoveis(); vals.splice(
 
 /* ===================== CONDÔMINOS (coproprietários — zero ou mais) ===================== */
 let nCondominos = 0;   // quantidade de condôminos no formulário (0 = nenhum)
-const COND_BASES = ['nome','ecivil','sexo','prof','rg','cpf','endereco','municipio','conj_nome','conj_rg','conj_cpf','conj_prof'];
+const COND_BASES = ['nome','ecivil','sexo','prof','rg','cpf','endereco','municipio','regime','regime_outro','conj_nome','conj_rg','conj_cpf','conj_prof'];
 function condId(base,i){ return 'cond'+i+'_'+base; }
 /* HTML dos campos de um condômino (i). O cônjuge só é usado/validado quando casado. */
 function blocoCondominoCampos(i){
@@ -438,7 +438,7 @@ function blocoCondominoCampos(i){
     <div class="imovel-head"><b>Condômino ${i}</b> <button type="button" class="btn-rem" onclick="removerCondomino(${i})">Remover</button></div>
     <div class="fld full"><label class="flab">Nome completo</label><input class="f" id="${cj}_nome" placeholder="nome do condômino"></div>
     <div class="grid3">
-      <div class="fld"><label class="flab">Estado civil</label><select class="f" id="${cj}_ecivil" onchange="toggleCondConjuge(${i})"><option value="">selecione…</option><option value="solteiro">Solteiro(a)</option><option value="casado">Casado(a)</option></select></div>
+      <div class="fld"><label class="flab">Estado civil</label>${selEstadoCivil(cj+'_ecivil','toggleCondConjuge('+i+')')}</div>
       <div class="fld"><label class="flab">Sexo</label><select class="f" id="${cj}_sexo"><option value="">selecione…</option><option value="h">Masculino</option><option value="m">Feminino</option></select></div>
       <div class="fld"><label class="flab">Profissão</label><input class="f lc" id="${cj}_prof" value="agropecuarista"></div>
     </div>
@@ -449,6 +449,7 @@ function blocoCondominoCampos(i){
     </div>
     <div class="fld full"><label class="flab">Endereço (linha/localidade)</label><input class="f" id="${cj}_endereco" placeholder="ex.: Linha São José, interior"></div>
     <div id="${cj}_conjWrap" class="hidden">
+      <div class="fld full" style="margin-top:4px"><label class="flab">Regime de bens</label>${selRegime(cj+'_regime')}</div>
       <div class="fld full" style="margin-top:4px"><label class="flab">Nome do cônjuge</label><input class="f" id="${cj}_conj_nome" placeholder="nome do cônjuge"></div>
       <div class="grid3">
         <div class="fld"><label class="flab">RG (cônjuge)</label><input class="f" id="${cj}_conj_rg" placeholder="RG"></div>
@@ -586,7 +587,8 @@ function buildFields(){
       <div class="grid2"><div class="fld"><label class="flab">RG</label><input class="f" id="an_rg1" placeholder="RG"></div>
       <div class="fld"><label class="flab">CPF</label><input class="f" id="an_cpf1" inputmode="numeric" placeholder="000.000.000-00"></div></div>`;
     if(ecAnu==='casado'){
-      h+=`<div class="fld full" style="margin-top:8px"><label class="flab">Nome do cônjuge do anuente</label><input class="f" id="an_nome2" placeholder="nome do cônjuge"></div>
+      h+=`<div class="fld full" style="margin-top:8px"><label class="flab">Regime de bens</label>${selRegime('an_regime')}</div>
+        <div class="fld full" style="margin-top:8px"><label class="flab">Nome do cônjuge do anuente</label><input class="f" id="an_nome2" placeholder="nome do cônjuge"></div>
         <div class="grid3"><div class="fld"><label class="flab">RG</label><input class="f" id="an_rg2" placeholder="RG"></div>
         <div class="fld"><label class="flab">CPF</label><input class="f" id="an_cpf2" inputmode="numeric" placeholder="000.000.000-00"></div>
         <div class="fld"><label class="flab">Profissão</label><input class="f" id="an_prof2" value="agropecuarista" placeholder="ex.: agropecuarista"></div></div>`;
@@ -765,11 +767,12 @@ function civilTxt(ecivil,fem){
   if(ecivil==='uniao_estavel') return 'convivente em união estável';
   return '';
 }
-/* Estado civil (por gênero) de um campo do formulário, como span (placeholder se vazio). */
-function fvCivil(ecivilId,fem){
-  const w=civilTxt(gv(ecivilId),fem);
+/* Estado civil (por gênero) como span (placeholder se vazio). */
+function civilSpan(ecivil,fem){
+  const w=civilTxt(ecivil,fem);
   return w?`<span class="fillv lc">${w}</span>`:`<span class="emptyv">[estado civil]</span>`;
 }
+function fvCivil(ecivilId,fem){ return civilSpan(gv(ecivilId),fem); }
 function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 /* Endereço do representante da CREDORA (gerente): sem "Rua" fixo (o logradouro já vem completo);
    omite o número quando vazio e o bairro quando vazio. */
@@ -789,15 +792,17 @@ function fvRawLc(v,guia){ return v?`<span class="fillv lc">${esc(v)}</span>`:`<s
 /* Qualificação completa de UM condômino (com cônjuge, quando casado), com flexão por sexo. */
 function qualificaCondomino(c){
   const fem = c.sexo==='m';                 // convenção: 'm' = feminino, 'h' = masculino
-  const casado = c.ecivil==='casado', solteiro = c.ecivil==='solteiro';
+  const casado = c.ecivil==='casado';
   const nome=fvRaw(c.nome,'nome do condômino'), prof=fvRawLc(c.prof,'profissão');
   const rg=fvRaw(c.rg,'RG'), cpf=fvRaw(c.cpf,'CPF'), end=fvRaw(c.endereco,'endereço'), mun=fvRaw(c.municipio,'Município/UF');
   const nac=fem?'brasileira':'brasileiro';
   if(casado){
     const fc=!fem;   // cônjuge: gênero oposto
-    return `${nome}, ${nac}, ${fem?'casada':'casado'}, ${prof}, ${fem?'portadora':'portador'} da Cédula de Identidade RG nº ${rg}, ${fem?'inscrita':'inscrito'} no CPF sob o nº ${cpf}, e ${fem?'seu esposo':'sua esposa'} ${fvRaw(c.conj_nome,'nome do cônjuge')}, ${fc?'brasileira, casada':'brasileiro, casado'}, ${fvRawLc(c.conj_prof,'profissão')}, ${fc?'portadora':'portador'} da Cédula de Identidade RG nº ${fvRaw(c.conj_rg,'RG')}, ${fc?'inscrita':'inscrito'} no CPF sob o nº ${fvRaw(c.conj_cpf,'CPF')}, ambos residentes e domiciliados na ${end}, no Município de ${mun}`;
+    const reg=c.regime==='outro'?c.regime_outro:c.regime;
+    const regSpan = reg?`<span class="fillv lc">${esc(reg)}</span>`:`<span class="emptyv">[regime de bens]</span>`;
+    return `${nome}, ${nac}, ${fem?'casada':'casado'} sob o regime de ${regSpan}, ${prof}, ${fem?'portadora':'portador'} da Cédula de Identidade RG nº ${rg}, ${fem?'inscrita':'inscrito'} no CPF sob o nº ${cpf}, e ${fem?'seu esposo':'sua esposa'} ${fvRaw(c.conj_nome,'nome do cônjuge')}, ${fc?'brasileira, casada':'brasileiro, casado'}, ${fvRawLc(c.conj_prof,'profissão')}, ${fc?'portadora':'portador'} da Cédula de Identidade RG nº ${fvRaw(c.conj_rg,'RG')}, ${fc?'inscrita':'inscrito'} no CPF sob o nº ${fvRaw(c.conj_cpf,'CPF')}, ambos residentes e domiciliados na ${end}, no Município de ${mun}`;
   }
-  return `${nome}, ${nac}${solteiro?(fem?', solteira':', solteiro'):''}, ${prof}, ${fem?'portadora':'portador'} da Cédula de Identidade RG nº ${rg}, ${fem?'inscrita':'inscrito'} no CPF sob o nº ${cpf}, ${fem?'residente e domiciliada':'residente e domiciliado'} na ${end}, no Município de ${mun}`;
+  return `${nome}, ${nac}, ${civilSpan(c.ecivil,fem)}, ${prof}, ${fem?'portadora':'portador'} da Cédula de Identidade RG nº ${rg}, ${fem?'inscrita':'inscrito'} no CPF sob o nº ${cpf}, ${fem?'residente e domiciliada':'residente e domiciliado'} na ${end}, no Município de ${mun}`;
 }
 /* Sufixo de condomínio para a identificação do imóvel na cláusula de garantia (8.2/7.2). */
 function condominoCoPropTxt(itemNum){
@@ -864,17 +869,28 @@ function imovelMunicipiosTxt(){
 }
 
 /* Regime de bens: se "outro" estiver selecionado, vale o que foi digitado */
-function toggleRegimeOutro(){
-  const s=document.getElementById('regime'), i=document.getElementById('regime_outro');
+/* Regime de bens — select reutilizável (emitente, anuente, condômino). O campo "outro" é "<selId>_outro". */
+function selRegime(selId){
+  return `<select class="f" id="${selId}" onchange="toggleRegime('${selId}')">
+          <option value="">selecione o regime...</option>
+          <option>comunhão parcial de bens</option>
+          <option>comunhão universal de bens</option>
+          <option>separação total de bens</option>
+          <option value="outro">outro (especificar)</option>
+        </select>
+        <input class="f" id="${selId}_outro" placeholder="especifique o regime" style="display:none;margin-top:6px">`;
+}
+function toggleRegime(selId){
+  const s=document.getElementById(selId), i=document.getElementById(selId+'_outro');
   if(!s||!i) return;
   i.style.display = s.value==='outro' ? 'block' : 'none';
   if(s.value!=='outro') i.value='';
   render();
 }
-function fvRegime(){
-  const s=gv('regime'); const v = s==='outro' ? gv('regime_outro') : s;
-  return v ? `<span class="fillv lc">${esc(v)}</span>` : `<span class="emptyv">[regime de bens]</span>`;
-}
+function toggleRegimeOutro(){ toggleRegime('regime'); }   // compatibilidade: emitente usa id "regime"
+function regimeVal(selId){ const v=gv(selId); return v==='outro' ? gv(selId+'_outro') : v; }
+function fvRegimeId(selId){ const v=regimeVal(selId); return v ? `<span class="fillv lc">${esc(v)}</span>` : `<span class="emptyv">[regime de bens]</span>`; }
+function fvRegime(){ return fvRegimeId('regime'); }        // compatibilidade: emitente
 
 /* Máscaras: digita só números e o campo se formata sozinho */
 function maskCPF(v){
@@ -957,6 +973,7 @@ function validarFilial(){
    Com a URL do web app (Google Apps Script): numeração COMPARTILHADA entre todos. */
 const NUMERACAO_URL = 'https://script.google.com/macros/s/AKfycbwuY6bHgwhHtyrPzCg4FxCEQDkni1hTVaf9CSO7m_eJevGnN29l-cGSEueodxz4xrwo/exec';   // web app do Apps Script — numeração COMPARTILHADA
 let modoReemissao=false;   // true = CPR importada para REEMISSÃO (mantém o mesmo número, não gera novo)
+let numeroTipo=null;       // tipo (fisica/financeira) para o qual o número atual foi buscado — se o tipo mudar, re-busca
 
 function _chaveNum(tipo,filial){ return (tipo||'')+'|'+(filial||''); }
 function _numMap(){ try{ return JSON.parse(localStorage.getItem('cpr_numeracao')||'{}'); }catch(e){ return {}; } }
@@ -981,14 +998,14 @@ async function sugerirProximo(tipo,filial){
 async function preencherProximoNumero(forcar){
   const numEl=document.getElementById('num'); const filial=gv('filial');
   if(!numEl || !filial || !filialValida(filial)) return;
-  if(forcar) numEl.value='';                 // botão/atualizar filial: busca de novo mesmo que já tenha número
-  if(numEl.value.trim()) return;
+  if(forcar) numEl.value='';                 // botão/atualizar filial/troca de tipo: busca de novo mesmo que já tenha número
+  if(numEl.value.trim()){ numeroTipo=cfg.tipo; return; }   // já tem número -> vincula-o ao tipo atual
   const aviso=document.getElementById('numLoading');
   if(aviso) aviso.classList.remove('hidden');
   numEl.classList.add('buscando');
   try{
     const n=await sugerirProximo(cfg.tipo, filial);
-    if(n && !numEl.value.trim()){ numEl.value=n; numEl.dispatchEvent(new Event('input',{bubbles:true})); }
+    if(n && !numEl.value.trim()){ numEl.value=n; numEl.dispatchEvent(new Event('input',{bubbles:true})); numeroTipo=cfg.tipo; }
   }catch(e){}
   finally{
     numEl.classList.remove('buscando');
@@ -1285,7 +1302,7 @@ function render(){
   if(A){
     let qual;
     if(ecAnu==='casado'){
-      qual=`${fv('an_nome1','nome do anuente')}, ${sxAnu==='m'?'brasileira':'brasileiro'}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, e ${sxAnu==='m'?'seu esposo':'sua esposa'} ${fv('an_nome2','nome do cônjuge')}, ${sxAnu==='m'?'brasileiro':'brasileira'}, ${fvLc('an_prof2','profissão')}, CPF nº ${fv('an_cpf2','CPF')}, Cédula de Identidade ${fv('an_rg2','RG')}, residentes e domiciliados na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
+      qual=`${fv('an_nome1','nome do anuente')}, ${sxAnu==='m'?'brasileira':'brasileiro'}, ${sxAnu==='m'?'casada':'casado'} sob o regime de ${fvRegimeId('an_regime')}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, e ${sxAnu==='m'?'seu esposo':'sua esposa'} ${fv('an_nome2','nome do cônjuge')}, ${sxAnu==='m'?'brasileiro':'brasileira'}, ${fvLc('an_prof2','profissão')}, CPF nº ${fv('an_cpf2','CPF')}, Cédula de Identidade ${fv('an_rg2','RG')}, residentes e domiciliados na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
     } else {
       qual=`${fv('an_nome1','nome do anuente')}, ${A.nac}, ${fvCivil('ec_anu',A.fem)}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, ${A.domic} na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
     }
@@ -1444,7 +1461,7 @@ function renderFinanceira(){
   if(A){
     let qual;
     if(ecAnu==='casado'){
-      qual=`${fv('an_nome1','nome do anuente')}, ${sxAnu==='m'?'brasileira':'brasileiro'}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, e ${sxAnu==='m'?'seu esposo':'sua esposa'} ${fv('an_nome2','nome do cônjuge')}, ${sxAnu==='m'?'brasileiro':'brasileira'}, ${fvLc('an_prof2','profissão')}, CPF nº ${fv('an_cpf2','CPF')}, Cédula de Identidade ${fv('an_rg2','RG')}, residentes e domiciliados na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
+      qual=`${fv('an_nome1','nome do anuente')}, ${sxAnu==='m'?'brasileira':'brasileiro'}, ${sxAnu==='m'?'casada':'casado'} sob o regime de ${fvRegimeId('an_regime')}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, e ${sxAnu==='m'?'seu esposo':'sua esposa'} ${fv('an_nome2','nome do cônjuge')}, ${sxAnu==='m'?'brasileiro':'brasileira'}, ${fvLc('an_prof2','profissão')}, CPF nº ${fv('an_cpf2','CPF')}, Cédula de Identidade ${fv('an_rg2','RG')}, residentes e domiciliados na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
     } else {
       qual=`${fv('an_nome1','nome do anuente')}, ${A.nac}, ${fvCivil('ec_anu',A.fem)}, ${fvLc('an_prof1','profissão')}, CPF nº ${fv('an_cpf1','CPF')}, Cédula de Identidade ${fv('an_rg1','RG')}, ${A.domic} na ${fv('an_endereco','endereço')}, no Município de ${fv('an_municipio_res','Município/UF')}`;
     }
@@ -1585,7 +1602,10 @@ function iniciar(){
   buildFields(); calc(); render(); window.scrollTo(0,0);
   validarFilial();
   if(filialValida(gv('filial'))) preencherGerente();
-  if(!modoReemissao) preencherProximoNumero();   // preenche o número (se vazio) da filial/tipo atuais
+  // Número por tipo+filial: se o tipo mudou desde a última busca (ex.: Física -> Financeira), busca de novo.
+  const tipoMudou = numeroTipo && numeroTipo!==cfg.tipo;
+  if(tipoMudou){ delete formData.num; const ne=document.getElementById('num'); if(ne) ne.value=''; }
+  if(!modoReemissao || tipoMudou) preencherProximoNumero(tipoMudou);   // preenche/atualiza o número da filial/tipo atuais
   if(cfg.tipo==='fisica') sugerirPrecoFisica();   // pré-preenche o preço pré-fixado (se vazio) da aba "Preços"
 }
 function voltarConfig(){
@@ -1628,6 +1648,7 @@ async function aplicarDados(dados){
     if(dados.config.an_ecivil&& !formData.ec_anu)  formData.ec_anu =dados.config.an_ecivil;
     if(dados.config.an_sexo  && !formData.sx_anu)  formData.sx_anu =dados.config.an_sexo;
   }
+  numeroTipo = cfg.tipo;   // o número importado pertence ao tipo do PDF -> não dispara a re-busca por "troca de tipo"
   nImoveis = contarImoveis(formData);   // reconstrói a quantidade de imóveis do PDF/JSON
   nCondominos = contarCondominos(formData);   // reconstrói os condôminos do PDF/JSON
   baseCalc = (dados.baseCalc==='valor') ? 'valor' : 'sacas';   // preserva o último campo informado do PDF (padrão: quantidade)
@@ -1728,7 +1749,7 @@ function camposFaltandoEls(){
     if(el.closest('.hidden')) return;                                         // ignora campos ocultos (ex.: cônjuge do condômino solteiro)
     if(el.id==='an_data_arr') return;                                         // data do arrendamento é opcional
     if(el.id==='end_num') return;                                            // nº do endereço do gerente é opcional (sai "S/N" quando vazio)
-    if(el.id==='regime_outro' && document.getElementById('regime')?.value!=='outro') return; // só quando "outro"
+    if(/_outro$/.test(el.id)){ const selId=el.id.slice(0,-6); if(document.getElementById(selId)?.value!=='outro') return; } // campo "outro" do regime: só quando o regime = "outro"
     let vazio = !el.value.trim();
     if(el.id==='qtde_sacas' || el.id==='preco_saca') vazio = isNaN(numPos(el.id)); // exige número positivo
     if(el.id==='valor') vazio = isNaN(parseMoeda(el.value));                        // valor R$ positivo
