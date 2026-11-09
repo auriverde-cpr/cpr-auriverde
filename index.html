@@ -91,6 +91,8 @@
   .segbtn.seg-stack{display:grid;grid-template-columns:1fr;gap:8px}        /* Sócio: Sim/Não empilhados (duas linhas) */
   .segbtn.seg-grid3{display:grid;grid-template-columns:1fr 1fr;gap:8px}    /* Segurado: Sim|Não lado a lado */
   .segbtn.seg-grid3 button:nth-child(3){grid-column:1 / -1}               /* Empregador Rural: largura total abaixo */
+  .socio-seg{display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-top:8px;align-items:start}  /* Sócio | Segurado especial lado a lado */
+  @media(max-width:520px){.socio-seg{grid-template-columns:1fr}}
   .segbtn button{flex:1;border:1.5px solid var(--line);border-radius:7px;padding:6px 8px;background:var(--field-bg);color:var(--muted);font-weight:600;font-size:.82rem;cursor:pointer;transition:all .12s}
   .segbtn button:hover{border-color:var(--folha)}
   .segbtn button.on{border-color:var(--folha);background:var(--folha);color:#fff}
@@ -255,7 +257,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v6.0 · 09/11/2026';
+const APP_VERSAO='v6.1 · 09/11/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,anuente:null};
 const LABELS={
@@ -482,8 +484,10 @@ function selEstadoCivil(id,onchange){
     <option value="">selecione…</option>
     <option value="solteiro">Solteiro(a)</option>
     <option value="casado">Casado(a)</option>
-    <option value="viuvo">Viúvo(a)</option>
+    <option value="uniao_estavel">União estável</option>
+    <option value="separado">Separado(a)</option>
     <option value="divorciado">Divorciado(a)</option>
+    <option value="viuvo">Viúvo(a)</option>
   </select>`;
 }
 function selGenero(id){
@@ -513,6 +517,16 @@ function buildFields(){
         </div></div>
       <div class="fld"><label class="flab">Data de emissão</label><input class="f" type="date" id="data_emissao" value="${hojeISO}"></div></div></fieldset>`;
 
+  // Representante da Credora (vinculado à filial/número — vem antes do emitente para não se misturar com os dados das partes)
+  h+=`<fieldset><legend>Representante da Credora</legend>
+    <div class="grid2"><div class="fld"><label class="flab">Nome do gerente</label><input class="f" id="gerente" placeholder="nome"></div>
+    <div class="fld"><label class="flab">CPF</label><input class="f" id="cpfger" inputmode="numeric" placeholder="000.000.000-00"></div></div></fieldset>`;
+  h+=`<fieldset><legend>Endereço do Representante da Credora</legend>
+    <div class="grid2"><div class="fld"><label class="flab">Rua</label><input class="f" id="end_rua" placeholder="rua"></div>
+    <div class="fld"><label class="flab">Número</label><input class="f" id="end_num" placeholder="nº"></div></div>
+    <div class="grid2"><div class="fld"><label class="flab">Bairro</label><input class="f" id="end_bairro" placeholder="bairro"></div>
+    <div class="fld"><label class="flab">Município/UF</label><input class="f" id="end_municipio" placeholder="Município/UF"></div></div></fieldset>`;
+
   h+=`<fieldset><legend>${ecEmit==='casado'?'1º Emitente':'Emitente'}</legend>
     <div class="fld full"><label class="flab">Nome completo</label><input class="f" id="nome1" placeholder="nome"></div>
     <div class="grid3">
@@ -534,11 +548,11 @@ function buildFields(){
           <option value="outro">outro (especificar)</option>
         </select>
         <input class="f" id="regime_outro" placeholder="especifique o regime" style="display:none;margin-top:6px"></div>`:''}
-    ${cfg.tipo==='fisica'?`<div class="grid2" style="margin-top:8px">
-      <div class="fld full"><label class="flab">Sócio<span class="hint" tabindex="0" data-tip="Emitente é sócio/cooperado da Cooperativa Regional Auriverde? Como verificar? SES1400 (HS) - Parâmetros Gerais">?</span></label>
+    ${cfg.tipo==='fisica'?`<div class="socio-seg">
+      <div class="fld"><label class="flab">Sócio<span class="hint" tabindex="0" data-tip="Emitente é sócio/cooperado da Cooperativa Regional Auriverde? Como verificar? SES1400 (HS) - Parâmetros Gerais">?</span></label>
         <input type="text" class="f seg-hidden" id="socio" tabindex="-1" aria-hidden="true">
         <div class="segbtn seg-stack" data-for="socio"><button type="button" data-v="Sim">Sim</button><button type="button" data-v="Não">Não</button></div></div>
-      <div class="fld full"><label class="flab">Segurado especial<span class="hint" tabindex="0" data-tip="Enquadramento do emitente para fins de FUNRURAL. 'Empregador Rural' = NÃO há incidência de FUNRURAL (o encargo é recolhido pelo próprio empregador). Como verificar? SES1400 (HS) - Parâmetros Gerais - Contr. FUNRURAL.">?</span></label>
+      <div class="fld"><label class="flab">Segurado especial<span class="hint" tabindex="0" data-tip="Enquadramento do emitente para fins de FUNRURAL. 'Empregador Rural' = NÃO há incidência de FUNRURAL (o encargo é recolhido pelo próprio empregador). Como verificar? SES1400 (HS) - Parâmetros Gerais - Contr. FUNRURAL.">?</span></label>
         <input type="text" class="f seg-hidden" id="segurado_especial" tabindex="-1" aria-hidden="true">
         <div class="segbtn seg-grid3" data-for="segurado_especial"><button type="button" data-v="Sim">Sim</button><button type="button" data-v="Não">Não</button><button type="button" data-v="Empregador Rural">Empregador Rural</button></div></div>
     </div>`:''}</fieldset>`;
@@ -556,17 +570,7 @@ function buildFields(){
     <div class="grid2"><div class="fld"><label class="flab">Município/UF</label><input class="f" id="municipio_res" placeholder="Município/UF"></div>
     <div class="fld"><label class="flab">Telefone (DDD + número)</label><input class="f" id="telefone" inputmode="numeric" placeholder="(49) 99999-9999"></div></div></fieldset>`;
 
-  // Representante da Credora (dados pessoais)
-  h+=`<fieldset><legend>Representante da Credora</legend>
-    <div class="grid2"><div class="fld"><label class="flab">Nome do gerente</label><input class="f" id="gerente" placeholder="nome"></div>
-    <div class="fld"><label class="flab">CPF</label><input class="f" id="cpfger" inputmode="numeric" placeholder="000.000.000-00"></div></div></fieldset>`;
-
-  // Endereço do Representante da Credora (bloco próprio)
-  h+=`<fieldset><legend>Endereço do Representante da Credora</legend>
-    <div class="grid2"><div class="fld"><label class="flab">Rua</label><input class="f" id="end_rua" placeholder="rua"></div>
-    <div class="fld"><label class="flab">Número</label><input class="f" id="end_num" placeholder="nº"></div></div>
-    <div class="grid2"><div class="fld"><label class="flab">Bairro</label><input class="f" id="end_bairro" placeholder="bairro"></div>
-    <div class="fld"><label class="flab">Município/UF</label><input class="f" id="end_municipio" placeholder="Município/UF"></div></div></fieldset>`;
+  // (Os blocos "Representante da Credora" foram movidos para logo após a Identificação — ver acima.)
 
   // Anuente
   if(cfg.anuente==='sim'){
@@ -750,10 +754,12 @@ function fv(id,guia){const v=gv(id);return v?`<span class="fillv">${esc(v)}</spa
 function fvLc(id,guia){const v=gv(id);return v?`<span class="fillv lc">${esc(v)}</span>`:`<span class="emptyv">[${guia}]</span>`;}
 /* Palavra do estado civil com gênero (solteiro/casado/viúvo/divorciado). */
 function civilTxt(ecivil,fem){
-  if(ecivil==='solteiro')   return fem?'solteira':'solteiro';
-  if(ecivil==='casado')     return fem?'casada':'casado';
-  if(ecivil==='viuvo')      return fem?'viúva':'viúvo';
-  if(ecivil==='divorciado') return fem?'divorciada':'divorciado';
+  if(ecivil==='solteiro')      return fem?'solteira':'solteiro';
+  if(ecivil==='casado')        return fem?'casada':'casado';
+  if(ecivil==='viuvo')         return fem?'viúva':'viúvo';
+  if(ecivil==='divorciado')    return fem?'divorciada':'divorciado';
+  if(ecivil==='separado')      return fem?'separada':'separado';
+  if(ecivil==='uniao_estavel') return 'convivente em união estável';
   return '';
 }
 /* Estado civil (por gênero) de um campo do formulário, como span (placeholder se vazio). */
@@ -898,9 +904,9 @@ const GERENTES = {
   '14': {nome:'CLOVES RITTER',             cpf:'039.323.929-22', endereco:'Rua Lindolfo Drews',                            numero:'452',  bairro:'Jardim',          municipio:'Cunha Porã/SC'},
   '58': {nome:'CLOVES RITTER',             cpf:'039.323.929-22', endereco:'Rua Lindolfo Drews',                            numero:'452',  bairro:'Jardim',          municipio:'Cunha Porã/SC'},
   '90': {nome:'CLOVES RITTER',             cpf:'039.323.929-22', endereco:'Rua Lindolfo Drews',                            numero:'452',  bairro:'Jardim',          municipio:'Cunha Porã/SC'},
-  '15': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'Centro',          municipio:'São Carlos/SC'},
-  '19': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'Centro',          municipio:'São Carlos/SC'},
-  '37': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'Centro',          municipio:'São Carlos/SC'},
+  '15': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'Cristo Rei',      municipio:'São Carlos/SC'},
+  '19': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'Cristo Rei',      municipio:'São Carlos/SC'},
+  '37': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'Cristo Rei',      municipio:'São Carlos/SC'},
   '17': {nome:'SANDRO CARLOS KRÖLOF',      cpf:'016.281.329-57', endereco:'Rua dos Eucaliptos',                            numero:'308',  bairro:'Centro',          municipio:'Cunhataí/SC'},
   '25': {nome:'MARCOS CARLOS DIESEL',      cpf:'054.787.229-10', endereco:'Av. Felipe Martins',                            numero:'',     bairro:'Centro',          municipio:'Tigrinhos/SC'},
   '26': {nome:'WALTER FERRARI',            cpf:'074.328.749-56', endereco:'Av. Padre Antonio, Ed. Vento Minuano, Apto 505', numero:'940',  bairro:'Centro',          municipio:'Maravilha/SC'},
