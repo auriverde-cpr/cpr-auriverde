@@ -88,6 +88,9 @@
   /* Botões Sim/Não (Sócio, Segurado especial) */
   .segbtn{display:flex;gap:8px;flex-wrap:wrap}
   .segbtn button{min-width:60px}
+  .segbtn.seg-stack{display:grid;grid-template-columns:1fr;gap:8px}        /* Sócio: Sim/Não empilhados (duas linhas) */
+  .segbtn.seg-grid3{display:grid;grid-template-columns:1fr 1fr;gap:8px}    /* Segurado: Sim|Não lado a lado */
+  .segbtn.seg-grid3 button:nth-child(3){grid-column:1 / -1}               /* Empregador Rural: largura total abaixo */
   .segbtn button{flex:1;border:1.5px solid var(--line);border-radius:7px;padding:6px 8px;background:var(--field-bg);color:var(--muted);font-weight:600;font-size:.82rem;cursor:pointer;transition:all .12s}
   .segbtn button:hover{border-color:var(--folha)}
   .segbtn button.on{border-color:var(--folha);background:var(--folha);color:#fff}
@@ -273,7 +276,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v5.5 · 06/11/2026';
+const APP_VERSAO='v5.9 · 09/11/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,ecivil:null,sexo:null,anuente:null,an_ecivil:null,an_sexo:null};
 const LABELS={
@@ -535,12 +538,12 @@ function buildFields(){
       <div class="fld"><label class="flab">Inscrição estadual</label><input class="f" id="ie1" placeholder="IE produtor rural"></div>
     </div>
     ${cfg.tipo==='fisica'?`<div class="grid2" style="margin-top:8px">
-      <div class="fld"><label class="flab">Sócio<span class="hint" tabindex="0" data-tip="Emitente é sócio/cooperado da Cooperativa Regional Auriverde? Como verificar? SES1400 (HS) - Parâmetros Gerais">?</span></label>
+      <div class="fld full"><label class="flab">Sócio<span class="hint" tabindex="0" data-tip="Emitente é sócio/cooperado da Cooperativa Regional Auriverde? Como verificar? SES1400 (HS) - Parâmetros Gerais">?</span></label>
         <input type="text" class="f seg-hidden" id="socio" tabindex="-1" aria-hidden="true">
-        <div class="segbtn" data-for="socio"><button type="button" data-v="Sim">Sim</button><button type="button" data-v="Não">Não</button></div></div>
+        <div class="segbtn seg-stack" data-for="socio"><button type="button" data-v="Sim">Sim</button><button type="button" data-v="Não">Não</button></div></div>
       <div class="fld full"><label class="flab">Segurado especial<span class="hint" tabindex="0" data-tip="Enquadramento do emitente para fins de FUNRURAL. 'Empregador Rural' = NÃO há incidência de FUNRURAL (o encargo é recolhido pelo próprio empregador). Como verificar? SES1400 (HS) - Parâmetros Gerais - Contr. FUNRURAL.">?</span></label>
         <input type="text" class="f seg-hidden" id="segurado_especial" tabindex="-1" aria-hidden="true">
-        <div class="segbtn" data-for="segurado_especial"><button type="button" data-v="Sim">Sim</button><button type="button" data-v="Não">Não</button><button type="button" data-v="Empregador Rural">Empregador Rural</button></div></div>
+        <div class="segbtn seg-grid3" data-for="segurado_especial"><button type="button" data-v="Sim">Sim</button><button type="button" data-v="Não">Não</button><button type="button" data-v="Empregador Rural">Empregador Rural</button></div></div>
     </div>`:''}</fieldset>`;
 
   if(cfg.ecivil==='casado'){
@@ -587,17 +590,17 @@ function buildFields(){
       <div class="fld"><label class="flab">Data do contrato de arrendamento</label><input class="f" type="date" id="an_data_arr"></div></div></fieldset>`;
   }
 
+  // Condôminos (coproprietários) — opcional, 0 ou mais (logo após o[s] anuente[s]/proprietário[s])
+  h+=`<fieldset><legend>Condôminos (coproprietários)${nCondominos>0?' — '+nCondominos:''}</legend><div id="condominosWrap">`;
+  for(let _i=1;_i<=nCondominos;_i++) h+=blocoCondominoCampos(_i);
+  h+=`</div><div style="margin-top:8px"><button type="button" class="btn-add" onclick="adicionarCondomino()">+ Adicionar condômino</button><span class="hint" tabindex="0" data-tip="Inclua os demais coproprietários (condôminos) do imóvel, além ${cfg.anuente==='sim'?'do arrendador/anuente':'do emitente'}. ${cfg.anuente==='sim'?'Como há anuente, o texto trata os condôminos como coproprietários do imóvel ARRENDADO (junto ao arrendador).':'Sem anuente, o texto trata os condôminos como coproprietários do imóvel PRÓPRIO do emitente.'} Cada condômino é qualificado no documento e anui expressamente ao penhor. Se casado, informe também os dados do cônjuge. Deixe vazio se não houver condôminos.">?</span></div></fieldset>`;
+
   const fisica = cfg.tipo==='fisica';
 
   // Imóvel
   h+=`<fieldset><legend>Imóvel${nImoveis>1?'(is)':''}</legend><div id="imoveisWrap">`;
   for(let _i=1;_i<=nImoveis;_i++) h+=blocoImovelCampos(_i);
   h+=`</div><div style="margin-top:8px"><button type="button" class="btn-add" onclick="adicionarImovel()">+ Adicionar imóvel</button><span class="hint" tabindex="0" data-tip="Use apenas quando o proprietário de TODOS os imóveis for o mesmo (o anuente/arrendador é único). Para imóveis de proprietários diferentes, emita CPRs separadas.">?</span></div></fieldset>`;
-
-  // Condôminos (coproprietários) — opcional, 0 ou mais
-  h+=`<fieldset><legend>Condôminos (coproprietários)${nCondominos>0?' — '+nCondominos:''}</legend><div id="condominosWrap">`;
-  for(let _i=1;_i<=nCondominos;_i++) h+=blocoCondominoCampos(_i);
-  h+=`</div><div style="margin-top:8px"><button type="button" class="btn-add" onclick="adicionarCondomino()">+ Adicionar condômino</button><span class="hint" tabindex="0" data-tip="Inclua os demais coproprietários (condôminos) do imóvel, além ${cfg.anuente==='sim'?'do arrendador/anuente':'do emitente'}. ${cfg.anuente==='sim'?'Como há anuente, o texto trata os condôminos como coproprietários do imóvel ARRENDADO (junto ao arrendador).':'Sem anuente, o texto trata os condôminos como coproprietários do imóvel PRÓPRIO do emitente.'} Cada condômino é qualificado no documento e anui expressamente ao penhor. Se casado, informe também os dados do cônjuge. Deixe vazio se não houver condôminos.">?</span></div></fieldset>`;
 
   // Produto
   h+=`<fieldset><legend>Produto</legend>
@@ -876,23 +879,32 @@ function numCPR(){return `${fv('num','nº')}/${anoTxt()}/${fv('filial','filial')
    Preenche automaticamente os dados da CREDORA a partir da filial informada.
    Atualize este objeto quando a planilha Dados_Gerentes mudar. Filiais sem gerente ficam em branco. */
 const GERENTES = {
-  '1':  {nome:'LEANDRO DECOSTA',           cpf:'080.712.449-45', endereco:'Av. Sete de Setembro',                          numero:'1195', bairro:'',                municipio:'Maravilha/SC'},
-  '73': {nome:'LEANDRO DECOSTA',           cpf:'080.712.449-45', endereco:'Av. Sete de Setembro',                          numero:'1195', bairro:'',                municipio:'Maravilha/SC'},
+  '1':  {nome:'LEANDRO DECOSTA',           cpf:'080.712.449-45', endereco:'Av. Sete de Setembro',                          numero:'1195', bairro:'Centro',          municipio:'Maravilha/SC'},
+  '73': {nome:'LEANDRO DECOSTA',           cpf:'080.712.449-45', endereco:'Av. Sete de Setembro',                          numero:'1195', bairro:'Centro',          municipio:'Maravilha/SC'},
   '10': {nome:'MARCELO CONTE',             cpf:'039.965.779-74', endereco:'Linha Barra Bonita',                            numero:'',     bairro:'Interior',        municipio:'São Miguel da Boa Vista/SC'},
-  '14': {nome:'CLOVES RITTER',             cpf:'039.323.929-22', endereco:'Rua Lindolfo Drews',                            numero:'452',  bairro:'',                municipio:'Cunha Porã/SC'},
-  '58': {nome:'CLOVES RITTER',             cpf:'039.323.929-22', endereco:'Rua Lindolfo Drews',                            numero:'452',  bairro:'',                municipio:'Cunha Porã/SC'},
-  '90': {nome:'CLOVES RITTER',             cpf:'039.323.929-22', endereco:'Rua Lindolfo Drews',                            numero:'452',  bairro:'',                municipio:'Cunha Porã/SC'},
-  '15': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'',                municipio:'São Carlos/SC'},
-  '19': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'',                municipio:'São Carlos/SC'},
-  '37': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'',                municipio:'São Carlos/SC'},
-  '17': {nome:'SANDRO CARLOS KRÖLOF',      cpf:'016.281.329-57', endereco:'Rua dos Eucaliptos',                            numero:'308',  bairro:'',                municipio:'Cunhataí/SC'},
+  '14': {nome:'CLOVES RITTER',             cpf:'039.323.929-22', endereco:'Rua Lindolfo Drews',                            numero:'452',  bairro:'Jardim',          municipio:'Cunha Porã/SC'},
+  '58': {nome:'CLOVES RITTER',             cpf:'039.323.929-22', endereco:'Rua Lindolfo Drews',                            numero:'452',  bairro:'Jardim',          municipio:'Cunha Porã/SC'},
+  '90': {nome:'CLOVES RITTER',             cpf:'039.323.929-22', endereco:'Rua Lindolfo Drews',                            numero:'452',  bairro:'Jardim',          municipio:'Cunha Porã/SC'},
+  '15': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'Centro',          municipio:'São Carlos/SC'},
+  '19': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'Centro',          municipio:'São Carlos/SC'},
+  '37': {nome:'JOSÉ ADOLFO RIPPLINGER',    cpf:'430.288.379-00', endereco:'Rua Getúlio Vargas',                            numero:'492',  bairro:'Centro',          municipio:'São Carlos/SC'},
+  '17': {nome:'SANDRO CARLOS KRÖLOF',      cpf:'016.281.329-57', endereco:'Rua dos Eucaliptos',                            numero:'308',  bairro:'Centro',          municipio:'Cunhataí/SC'},
+  '25': {nome:'MARCOS CARLOS DIESEL',      cpf:'054.787.229-10', endereco:'Av. Felipe Martins',                            numero:'',     bairro:'Centro',          municipio:'Tigrinhos/SC'},
   '26': {nome:'WALTER FERRARI',            cpf:'074.328.749-56', endereco:'Av. Padre Antonio, Ed. Vento Minuano, Apto 505', numero:'940',  bairro:'Centro',          municipio:'Maravilha/SC'},
   '46': {nome:'WALTER FERRARI',            cpf:'074.328.749-56', endereco:'Av. Padre Antonio, Ed. Vento Minuano, Apto 505', numero:'940',  bairro:'Centro',          municipio:'Maravilha/SC'},
-  '41': {nome:'DARLEI LUVIZA',             cpf:'047.925.519-94', endereco:'Rua Seis de Janeiro',                           numero:'',     bairro:'Sabadin',         municipio:'Iraceminha/SC'},
-  '42': {nome:'DARLEI LUVIZA',             cpf:'047.925.519-94', endereco:'Rua Seis de Janeiro',                           numero:'',     bairro:'Sabadin',         municipio:'Iraceminha/SC'},
+  '41': {nome:'DARLEI LUVIZA',             cpf:'047.925.519-94', endereco:'Rua Seis de Janeiro',                           numero:'26',   bairro:'Sabadin',         municipio:'Iraceminha/SC'},
+  '42': {nome:'DARLEI LUVIZA',             cpf:'047.925.519-94', endereco:'Rua Seis de Janeiro',                           numero:'26',   bairro:'Sabadin',         municipio:'Iraceminha/SC'},
   '48': {nome:'ALESSANDRO BEDIN',          cpf:'060.868.769-32', endereco:'Rua Fábio Junior Zanella',                      numero:'251',  bairro:'São José',        municipio:'Maravilha/SC'},
   '72': {nome:'ALESSANDRO BEDIN',          cpf:'060.868.769-32', endereco:'Rua Fábio Junior Zanella',                      numero:'251',  bairro:'São José',        municipio:'Maravilha/SC'},
+  '43': {nome:'ARLAN ANTUNES DE BRIDA',    cpf:'041.681.249-08', endereco:'Estrada Geral, Rio Rocinha',                    numero:'',     bairro:'Rocinha de Cima', municipio:'Lauro Muller/SC'},
   '49': {nome:'ARLAN ANTUNES DE BRIDA',    cpf:'041.681.249-08', endereco:'Estrada Geral, Rio Rocinha',                    numero:'',     bairro:'Rocinha de Cima', municipio:'Lauro Muller/SC'},
+  '45': {nome:'HIANKA CARARA DE SOUZA',    cpf:'103.833.909-07', endereco:'Rua Projetada 1, Lot. San Galdino',             numero:'122',  bairro:'Linha Anta',      municipio:'Içara/SC'},
+  '51': {nome:'LETICIA FRAGA DAS NEVES',   cpf:'094.442.779-09', endereco:'Rua José Cardoso da Silva',                     numero:'69',   bairro:'Centro',          municipio:'Armazém/SC'},
+  '69': {nome:'ALISSON SILVA PEREIRA',     cpf:'099.999.289-94', endereco:'Rua Antônio David Fillet',                      numero:'23',   bairro:'Centro',          municipio:'Armazém/SC'},
+  '60': {nome:'CLOVIS LUIS ALLEBRANDT',    cpf:'661.401.100-68', endereco:'Rua Inês Perine',                               numero:'132',  bairro:'Novo Horizonte',  municipio:'Santa Rosa/RS'},
+  '63': {nome:'WAGNER JULIANO KOHLS',      cpf:'028.738.330-09', endereco:'Linha Pardo',                                   numero:'285',  bairro:'Interior',        municipio:'Boa Vista do Buricá/RS'},
+  '67': {nome:'REIMAR CAVALLI',            cpf:'001.730.930-19', endereco:'Rua Hugo Kanitz',                               numero:'486',  bairro:'Ildo Meneghetti', municipio:'Três Passos/RS'},
+  '68': {nome:'CHARLES AUGUSTO BOGORNI',   cpf:'076.121.619-74', endereco:'Rua Planalto',                                  numero:'312',  bairro:'Centro',          municipio:'Três de Maio/RS'},
   '71': {nome:'REIMAR CAVALLI',            cpf:'001.730.930-19', endereco:'Rua Hugo Kanitz',                               numero:'486',  bairro:'Ildo Meneghetti', municipio:'Três Passos/RS'}
 };
 /* Todas as filiais válidas (mesmo as que ainda não têm gerente cadastrado). */
@@ -1684,6 +1696,7 @@ function camposFaltandoEls(){
     if(el.readOnly) return;                                                   // ignora calculados (valor, kg)
     if(el.closest('.hidden')) return;                                         // ignora campos ocultos (ex.: cônjuge do condômino solteiro)
     if(el.id==='an_data_arr') return;                                         // data do arrendamento é opcional
+    if(el.id==='end_num') return;                                            // nº do endereço do gerente é opcional (sai "S/N" quando vazio)
     if(el.id==='regime_outro' && document.getElementById('regime')?.value!=='outro') return; // só quando "outro"
     let vazio = !el.value.trim();
     if(el.id==='qtde_sacas' || el.id==='preco_saca') vazio = isNaN(numPos(el.id)); // exige número positivo
