@@ -260,7 +260,7 @@
 if(typeof pdfjsLib!=='undefined'){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }catch(e){} }
 
 /* VERSÃO DO APP — atualize esta ÚNICA linha (versão E data juntas) a cada publicação */
-const APP_VERSAO='v6.4 · 09/11/2026';
+const APP_VERSAO='v6.5 · 25/11/2026';
 document.getElementById('appver').textContent=APP_VERSAO;
 const cfg={tipo:null,cultura:null,safra_tipo:null,anuente:null};
 const LABELS={
@@ -380,7 +380,7 @@ function specsQualidade(){
 
 /* ===================== IMÓVEIS (um ou mais) ===================== */
 let nImoveis = 1;   // quantidade de imóveis no formulário (persiste entre idas à configuração)
-const IMOVEL_BASES = ['matricula','comarca_ri','mun_imovel','car','ccir','area_total','area_cult'];
+const IMOVEL_BASES = ['matricula','comarca_ri','mun_imovel','car','ccir','cod_ccir','area_total','area_cult'];
 function imovelId(base,i){ return base + (i===1 ? '' : '_'+i); }
 /* HTML dos campos de um imóvel (i). O 1º usa os ids originais; os demais recebem sufixo _i. */
 function blocoImovelCampos(i){
@@ -393,7 +393,8 @@ function blocoImovelCampos(i){
     <div class="fld"><label class="flab">Comarca do Registro de Imóveis (RI)</label><input class="f" id="comarca_ri${s}" placeholder="Comarca"></div>
     <div class="fld"><label class="flab">Município/UF do imóvel</label><input class="f" id="mun_imovel${s}" placeholder="Município/UF"></div>
     <div class="fld"><label class="flab">CAR do Imóvel</label><input class="f" id="car${s}" placeholder="nº do CAR"></div>
-    <div class="fld"><label class="flab">CCIR/Incra</label><input class="f" id="ccir${s}" placeholder="nº do CCIR"></div>
+    <div class="fld"><label class="flab">Número do CCIR<span class="hint" tabindex="0" data-tip="Número do CCIR/Incra. Informe o Número e/ou o Código do CCIR — é obrigatório preencher pelo menos um dos dois.">?</span></label><input class="f" id="ccir${s}" placeholder="nº do CCIR"></div>
+    <div class="fld"><label class="flab">Código do CCIR<span class="hint" tabindex="0" data-tip="Código do Imóvel Rural no CCIR/Incra. Informe o Número e/ou o Código do CCIR — é obrigatório preencher pelo menos um dos dois.">?</span></label><input class="f" id="cod_ccir${s}" placeholder="código do CCIR"></div>
     <div class="fld"><label class="flab">Área total (ha)<span class="hint" tabindex="0" data-tip="Área total deste imóvel.">?</span></label><input class="f" id="area_total${s}" placeholder="ha"></div>
     <div class="fld"><label class="flab">Área cultivada (ha)<span class="hint" tabindex="0" data-tip="Área cultivada neste imóvel, vinculada à CPR.">?</span></label><input class="f" id="area_cult${s}" placeholder="ha"></div>
     </div></div>`;
@@ -404,7 +405,7 @@ function getImoveis(){
   for(let i=1;i<=nImoveis;i++){
     arr.push({
       matricula:gv(imovelId('matricula',i)), comarca:gv(imovelId('comarca_ri',i)), municipio:gv(imovelId('mun_imovel',i)),
-      car:gv(imovelId('car',i)), ccir:gv(imovelId('ccir',i)),
+      car:gv(imovelId('car',i)), ccir:gv(imovelId('ccir',i)), cod_ccir:gv(imovelId('cod_ccir',i)),
       area_total:gv(imovelId('area_total',i)), area_cult:gv(imovelId('area_cult',i))
     });
   }
@@ -418,10 +419,10 @@ function contarImoveis(fd){
 }
 /* Grava no formData um array de imóveis (re-indexado), limpando as chaves antigas. */
 function setImoveisFormData(vals){
-  Object.keys(formData).forEach(k=>{ if(/^(?:matricula|comarca_ri|mun_imovel|car|ccir|area_total|area_cult)(?:_\d+)?$/.test(k)) delete formData[k]; });
+  Object.keys(formData).forEach(k=>{ if(/^(?:matricula|comarca_ri|mun_imovel|car|cod_ccir|ccir|area_total|area_cult)(?:_\d+)?$/.test(k)) delete formData[k]; });
   vals.forEach((v,idx)=>{ const s=(idx===0)?'':'_'+(idx+1);
     formData['matricula'+s]=v.matricula; formData['comarca_ri'+s]=v.comarca; formData['mun_imovel'+s]=v.municipio;
-    formData['car'+s]=v.car; formData['ccir'+s]=v.ccir; formData['area_total'+s]=v.area_total; formData['area_cult'+s]=v.area_cult;
+    formData['car'+s]=v.car; formData['ccir'+s]=v.ccir; formData['cod_ccir'+s]=v.cod_ccir; formData['area_total'+s]=v.area_total; formData['area_cult'+s]=v.area_cult;
   });
 }
 function adicionarImovel(){ saveFormData(); nImoveis++; buildFields(); calc(); render(); const w=document.getElementById('imoveisWrap'); if(w) w.lastElementChild.scrollIntoView({block:'center'}); }
@@ -677,7 +678,7 @@ function buildFields(){
   ['num','filial'].forEach(id=>_onInput(id,soDig));
   ['rg1','rg2','an_rg1','an_rg2','ie1'].forEach(id=>_onInput(id,numSep));
   for(let _i=1;_i<=nImoveis;_i++){ const s=_i===1?'':'_'+_i;        // máscaras de cada imóvel
-    _onInput('matricula'+s,numSep); _onInput('ccir'+s,numSep); _onInput('car'+s,carMask);
+    _onInput('matricula'+s,numSep); _onInput('ccir'+s,numSep); _onInput('cod_ccir'+s,numSep); _onInput('car'+s,carMask);
     _onInput('area_total'+s,decMask); _onInput('area_cult'+s,decMask);
   }
   for(let _i=1;_i<=nCondominos;_i++){ _onInput('cond'+_i+'_rg',numSep); _onInput('cond'+_i+'_conj_rg',numSep); }  // RG dos condôminos
@@ -838,9 +839,18 @@ function parseHa(v){ const n=parseFloat(String(v||'').replace(/\./g,'').replace(
 function somaArea(campo){ return getImoveis().reduce((t,im)=>t+parseHa(im[campo]),0); }
 function fmtHa(n){ return n.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:2}); }
 /* Item 7 do Quadro-Resumo — local de produção. */
+/* CCIR: trecho "nº X e código Y" conforme o que estiver preenchido (ao menos um é obrigatório). */
+function ccirFrag(im){
+  const num=im.ccir, cod=im.cod_ccir;
+  const sp=v=>`<span class="fillv">${esc(v)}</span>`;
+  if(num && cod) return `nº ${sp(num)} e código ${sp(cod)}`;
+  if(num) return `nº ${sp(num)}`;
+  if(cod) return `código ${sp(cod)}`;
+  return `nº <span class="emptyv">[CCIR]</span>`;
+}
 function imoveisItem7(){
   const ims=getImoveis();
-  const un=im=>`matriculado sob o nº ${fvRaw(im.matricula,'matrícula')}, no RI da Comarca de ${fvRaw(im.comarca,'Comarca')}, Município de ${fvRaw(im.municipio,'Município')}, CAR nº ${fvRaw(im.car,'CAR')}`;
+  const un=im=>`matriculado sob o nº ${fvRaw(im.matricula,'matrícula')}, no RI da Comarca de ${fvRaw(im.comarca,'Comarca')}, Município de ${fvRaw(im.municipio,'Município')}, CAR nº ${fvRaw(im.car,'CAR')}, CCIR/Incra ${ccirFrag(im)}`;
   if(ims.length===1) return `Imóvel rural ${un(ims[0])}.`;
   return 'Imóveis rurais: ' + ims.map((im,i)=>`(${i+1}) ${un(im)}`).join('; ') + '.';
 }
@@ -855,7 +865,7 @@ function imoveisItem8(){
 function imoveisQtdHa(campo){ const ims=getImoveis(); return ims.length===1 ? fvRaw(ims[0][campo],'ha') : `<span class="fillv">${fmtHa(somaArea(campo))}</span>`; }
 function imovelDescGarantia(prefixoProprio){
   const ims=getImoveis();
-  const un=im=>`matriculado sob o nº ${fvRaw(im.matricula,'matrícula')} no Cartório de Registro de Imóveis da Comarca de ${fvRaw(im.comarca,'Comarca')}, situado no Município de ${fvRaw(im.municipio,'Município')}, com área total de ${fvRaw(im.area_total,'ha')} hectares, inscrito no CAR sob o nº ${fvRaw(im.car,'CAR')} e no Cadastro de Imóveis Rurais (CCIR/Incra) sob o nº ${fvRaw(im.ccir,'CCIR')}, cuja área cultivada vinculada a esta Cédula é de ${fvRaw(im.area_cult,'ha')} hectares`;
+  const un=im=>`matriculado sob o nº ${fvRaw(im.matricula,'matrícula')} no Cartório de Registro de Imóveis da Comarca de ${fvRaw(im.comarca,'Comarca')}, situado no Município de ${fvRaw(im.municipio,'Município')}, com área total de ${fvRaw(im.area_total,'ha')} hectares, inscrito no CAR sob o nº ${fvRaw(im.car,'CAR')} e no Cadastro de Imóveis Rurais (CCIR/Incra) sob o ${ccirFrag(im)}, cuja área cultivada vinculada a esta Cédula é de ${fvRaw(im.area_cult,'ha')} hectares`;
   if(ims.length===1) return `imóvel rural ${prefixoProprio}, ${un(ims[0])}.`;
   return `imóveis rurais ${prefixoProprio}, assim identificados: ` + ims.map((im,i)=>`(${i+1}) ${un(im)}`).join('; ') + '.';
 }
@@ -1750,11 +1760,17 @@ function camposFaltandoEls(){
     if(el.id==='an_data_arr') return;                                         // data do arrendamento é opcional
     if(el.id==='end_num') return;                                            // nº do endereço do gerente é opcional (sai "S/N" quando vazio)
     if(/_outro$/.test(el.id)){ const selId=el.id.slice(0,-6); if(document.getElementById(selId)?.value!=='outro') return; } // campo "outro" do regime: só quando o regime = "outro"
+    if(/^(?:ccir|cod_ccir)(?:_\d+)?$/.test(el.id)) return;                    // CCIR: validado em conjunto (ao menos um — número OU código), logo abaixo
     let vazio = !el.value.trim();
     if(el.id==='qtde_sacas' || el.id==='preco_saca') vazio = isNaN(numPos(el.id)); // exige número positivo
     if(el.id==='valor') vazio = isNaN(parseMoeda(el.value));                        // valor R$ positivo
     if(vazio) els.push(el);
   });
+  // CCIR: cada imóvel exige PELO MENOS UM dos dois (Número do CCIR ou Código do CCIR).
+  for(let i=1;i<=nImoveis;i++){ const s=i===1?'':'_'+i;
+    const numEl=document.getElementById('ccir'+s), codEl=document.getElementById('cod_ccir'+s);
+    if(numEl && codEl && !numEl.value.trim() && !codEl.value.trim()){ els.push(numEl); els.push(codEl); }
+  }
   return els;
 }
 
